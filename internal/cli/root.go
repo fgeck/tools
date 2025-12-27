@@ -60,8 +60,8 @@ func listTools() error {
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 
 	// Print header
-	fmt.Fprintln(w, "NAME\tCOMMAND\tDESCRIPTION\tEXAMPLES")
-	fmt.Fprintln(w, "----\t-------\t-----------\t--------")
+	_, _ = fmt.Fprintln(w, "NAME\tCOMMAND\tDESCRIPTION\tEXAMPLES")
+	_, _ = fmt.Fprintln(w, "----\t-------\t-----------\t--------")
 
 	// Print rows
 	for _, tool := range resp.Tools {
@@ -73,7 +73,7 @@ func listTools() error {
 			}
 		}
 
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
 			tool.Name,
 			tool.Command,
 			tool.Description,
@@ -81,7 +81,7 @@ func listTools() error {
 		)
 	}
 
-	w.Flush()
+	_ = w.Flush()
 	fmt.Printf("\nTotal: %d tools\n", resp.Count)
 
 	return nil

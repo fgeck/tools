@@ -26,7 +26,7 @@ func newRemoveCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&removeName, "name", "n", "", "Tool name to remove (required)")
-	cmd.MarkFlagRequired("name")
+	_ = cmd.MarkFlagRequired("name")
 
 	return cmd
 }

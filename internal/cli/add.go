@@ -44,8 +44,8 @@ func newAddCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&addDescription, "description", "d", "", "Tool description")
 	cmd.Flags().StringArrayVarP(&addExamples, "example", "e", []string{}, "Usage example (can be specified multiple times)")
 
-	cmd.MarkFlagRequired("name")
-	cmd.MarkFlagRequired("command")
+	_ = cmd.MarkFlagRequired("name")
+	_ = cmd.MarkFlagRequired("command")
 
 	return cmd
 }
