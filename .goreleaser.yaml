@@ -51,3 +51,26 @@ changelog:
       - '^ci:'
       - '^chore:'
       - '^build:'
+
+brews:
+  - name: tools
+    # You need to create a repository: github.com/fgeck/homebrew-tools
+    repository:
+      owner: fgeck
+      name: homebrew-tools
+      token: "{{ .Env.GITHUB_TOKEN }}"
+
+    # Folder inside the repository
+    folder: Formula
+
+    homepage: "https://github.com/fgeck/tools"
+    description: "A bookmark manager for your terminal commands"
+    license: "MIT"
+
+    # Install script
+    install: |
+      bin.install "tools"
+
+    # Test the installation
+    test: |
+      system "#{bin}/tools", "--help"
