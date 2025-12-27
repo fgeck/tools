@@ -9,42 +9,45 @@ import (
 )
 
 var (
-	addName        string
-	addCommand     string
-	addDescription string
-	addExamples    []string
+	addToolName   string
+	addDesc       string
+	addExampleCmd string
 )
 
 func newAddCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "add",
 		Aliases: []string{"a"},
-		Short:   "Add a new tool bookmark",
-		Long:    "Add a new CLI tool bookmark with name, command, description, and examples",
+		Short:   "Add a new example bookmark",
+		Long: `Add a new example to the bookmark manager.
+
+Each example requires:
+- Tool name: For grouping (e.g., "lsof")
+- Description: What it does (e.g., "list all ports at port 54321")
+- Command: The actual command (e.g., "lsof -i :54321")`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			req := dto.CreateToolRequest{
-				Name:        addName,
-				Command:     addCommand,
-				Description: addDescription,
-				Examples:    addExamples,
+			req := dto.CreateExampleRequest{
+				Command:     addExampleCmd,
+				ToolName:    addToolName,
+				Description: addDesc,
 			}
 
-			resp, err := svc.CreateTool(context.Background(), req)
+			resp, err := svc.CreateExample(context.Background(), req)
 			if err != nil {
-				return fmt.Errorf("failed to add tool: %w", err)
+				return fmt.Errorf("failed to add example: %w", err)
 			}
 
-			fmt.Printf("Successfully added tool: %s\n", resp.Name)
+			fmt.Printf("Successfully added example for tool: %s\n", resp.ToolName)
 			return nil
 		},
 	}
 
-	cmd.Flags().StringVarP(&addName, "name", "n", "", "Tool name (required)")
-	cmd.Flags().StringVarP(&addCommand, "command", "c", "", "Command/path to executable (required)")
-	cmd.Flags().StringVarP(&addDescription, "description", "d", "", "Tool description")
-	cmd.Flags().StringArrayVarP(&addExamples, "example", "e", []string{}, "Usage example (can be specified multiple times)")
+	cmd.Flags().StringVarP(&addToolName, "tool", "t", "", "Tool name for grouping (required)")
+	cmd.Flags().StringVarP(&addDesc, "description", "d", "", "Description - what it does (required)")
+	cmd.Flags().StringVarP(&addExampleCmd, "command", "c", "", "The actual command to execute (required)")
 
-	_ = cmd.MarkFlagRequired("name")
+	_ = cmd.MarkFlagRequired("tool")
+	_ = cmd.MarkFlagRequired("description")
 	_ = cmd.MarkFlagRequired("command")
 
 	return cmd

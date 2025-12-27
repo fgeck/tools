@@ -7,26 +7,26 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var removeName string
+var removeCommand string
 
 func newRemoveCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "remove",
 		Aliases: []string{"rm", "delete"},
-		Short:   "Remove a tool bookmark",
-		Long:    "Remove a CLI tool bookmark by name",
+		Short:   "Remove an example bookmark",
+		Long:    "Remove an example by its command (primary key)",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := svc.DeleteTool(context.Background(), removeName); err != nil {
-				return fmt.Errorf("failed to remove tool: %w", err)
+			if err := svc.DeleteExample(context.Background(), removeCommand); err != nil {
+				return fmt.Errorf("failed to remove example: %w", err)
 			}
 
-			fmt.Printf("Successfully removed tool: %s\n", removeName)
+			fmt.Printf("Successfully removed example: %s\n", removeCommand)
 			return nil
 		},
 	}
 
-	cmd.Flags().StringVarP(&removeName, "name", "n", "", "Tool name to remove (required)")
-	_ = cmd.MarkFlagRequired("name")
+	cmd.Flags().StringVarP(&removeCommand, "command", "c", "", "Command to remove (required)")
+	_ = cmd.MarkFlagRequired("command")
 
 	return cmd
 }

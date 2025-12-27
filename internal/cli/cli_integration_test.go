@@ -23,12 +23,12 @@ func setupTestCLI(t *testing.T) (string, func()) {
 	filePath := filepath.Join(tmpDir, "tools.yaml")
 
 	// Initialize repository and service
-	repo, err := yaml.NewYAMLToolRepository(filePath)
+	repo, err := yaml.NewYAMLExampleRepository(filePath)
 	if err != nil {
 		t.Fatalf("Failed to create repository: %v", err)
 	}
 
-	testSvc := service.NewToolService(repo)
+	testSvc := service.NewExampleService(repo)
 	Initialize(testSvc)
 
 	// Return cleanup function
@@ -60,25 +60,24 @@ func TestCLIAddCommand(t *testing.T) {
 
 	// Simulate add command
 	ctx := context.Background()
-	_, err := svc.CreateTool(ctx, dto.CreateToolRequest{
-		Name:        "kubectl",
-		Command:     "/usr/bin/kubectl",
-		Description: "Kubernetes CLI",
-		Examples:    []string{"kubectl get pods"},
+	_, err := svc.CreateExample(ctx, dto.CreateExampleRequest{
+		Command:     "kubectl get pods",
+		ToolName:    "kubectl",
+		Description: "list all pods",
 	})
 
 	if err != nil {
 		t.Errorf("Add command failed: %v", err)
 	}
 
-	// Verify tool was created
-	resp, err := svc.ListTools(ctx)
+	// Verify example was created
+	resp, err := svc.ListExamples(ctx)
 	if err != nil {
-		t.Fatalf("Failed to list tools: %v", err)
+		t.Fatalf("Failed to list examples: %v", err)
 	}
 
 	if resp.Count != 1 {
-		t.Errorf("Expected 1 tool, got %d", resp.Count)
+		t.Errorf("Expected 1 example, got %d", resp.Count)
 	}
 }
 
@@ -88,37 +87,111 @@ func TestCLIListCommand(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Add some tools first
-	tools := []struct {
-		name    string
-		command string
+	// Add some examples first
+	examples := []struct {
+		command     string
+		toolName    string
+		description string
 	}{
-		{"kubectl", "/usr/bin/kubectl"},
-		{"docker", "/usr/bin/docker"},
-		{"helm", "/usr/bin/helm"},
+		{"kubectl get pods", "kubectl", "list pods"},
+		{"docker ps", "docker", "list containers"},
+		{"helm list", "helm", "list releases"},
 	}
 
-	for _, tool := range tools {
-		svc.CreateTool(ctx, dto.CreateToolRequest{
-			Name:    tool.name,
-			Command: tool.command,
+	for _, ex := range examples {
+		svc.CreateExample(ctx, dto.CreateExampleRequest{
+			Command:     ex.command,
+			ToolName:    ex.toolName,
+			Description: ex.description,
 		})
 	}
 
-	// List tools
+	// List examples
 	output := captureOutput(func() {
-		listTools()
+		listExamples()
 	})
 
 	// Verify output contains tool names
-	for _, tool := range tools {
-		if !strings.Contains(output, tool.name) {
-			t.Errorf("Output should contain tool name %s", tool.name)
+	for _, ex := range examples {
+		if !strings.Contains(output, ex.toolName) {
+			t.Errorf("Output should contain tool name %s", ex.toolName)
 		}
 	}
 
-	if !strings.Contains(output, "Total: 3 tools") {
+	if !strings.Contains(output, "Total: 3 examples") {
 		t.Error("Output should show total count")
+	}
+}
+
+func TestCLIEditCommand(t *testing.T) {
+	_, cleanup := setupTestCLI(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	// Add an example
+	svc.CreateExample(ctx, dto.CreateExampleRequest{
+		Command:     "kubectl get pods",
+		ToolName:    "kubectl",
+		Description: "old description",
+	})
+
+	// Edit the example
+	_, err := svc.UpdateExample(ctx, dto.UpdateExampleRequest{
+		Command:        "kubectl get pods",
+		NewDescription: "new description",
+	})
+	if err != nil {
+		t.Errorf("Edit command failed: %v", err)
+	}
+
+	// Verify it was updated
+	example, err := svc.GetExample(ctx, "kubectl get pods")
+	if err != nil {
+		t.Fatalf("Failed to get example: %v", err)
+	}
+
+	if example.Description != "new description" {
+		t.Errorf("Expected 'new description', got %s", example.Description)
+	}
+}
+
+func TestCLIEditCommandChangeCommand(t *testing.T) {
+	_, cleanup := setupTestCLI(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	// Add an example
+	svc.CreateExample(ctx, dto.CreateExampleRequest{
+		Command:     "kubectl get pods",
+		ToolName:    "kubectl",
+		Description: "list pods",
+	})
+
+	// Edit the command (primary key)
+	_, err := svc.UpdateExample(ctx, dto.UpdateExampleRequest{
+		Command:    "kubectl get pods",
+		NewCommand: "kubectl get pods -A",
+	})
+	if err != nil {
+		t.Errorf("Edit command failed: %v", err)
+	}
+
+	// Verify old command is gone
+	_, err = svc.GetExample(ctx, "kubectl get pods")
+	if err == nil {
+		t.Error("Old command should not exist")
+	}
+
+	// Verify new command exists
+	example, err := svc.GetExample(ctx, "kubectl get pods -A")
+	if err != nil {
+		t.Fatalf("Failed to get example with new command: %v", err)
+	}
+
+	if example.Command != "kubectl get pods -A" {
+		t.Errorf("Expected command 'kubectl get pods -A', got %s", example.Command)
 	}
 }
 
@@ -128,26 +201,27 @@ func TestCLIRemoveCommand(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Add a tool
-	svc.CreateTool(ctx, dto.CreateToolRequest{
-		Name:    "kubectl",
-		Command: "/usr/bin/kubectl",
+	// Add an example
+	svc.CreateExample(ctx, dto.CreateExampleRequest{
+		Command:     "kubectl get pods",
+		ToolName:    "kubectl",
+		Description: "list pods",
 	})
 
-	// Remove the tool
-	err := svc.DeleteTool(ctx, "kubectl")
+	// Remove the example
+	err := svc.DeleteExample(ctx, "kubectl get pods")
 	if err != nil {
 		t.Errorf("Remove command failed: %v", err)
 	}
 
 	// Verify it's gone
-	resp, err := svc.ListTools(ctx)
+	resp, err := svc.ListExamples(ctx)
 	if err != nil {
-		t.Fatalf("Failed to list tools: %v", err)
+		t.Fatalf("Failed to list examples: %v", err)
 	}
 
 	if resp.Count != 0 {
-		t.Errorf("Expected 0 tools after removal, got %d", resp.Count)
+		t.Errorf("Expected 0 examples after removal, got %d", resp.Count)
 	}
 }
 
@@ -157,67 +231,82 @@ func TestCLIEndToEndWorkflow(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Add multiple tools
-	tools := []struct {
-		name        string
+	// Add multiple examples
+	examples := []struct {
 		command     string
+		toolName    string
 		description string
-		examples    []string
 	}{
 		{
-			name:        "kubectl",
-			command:     "/usr/bin/kubectl",
-			description: "Kubernetes CLI",
-			examples:    []string{"kubectl get pods", "kubectl describe node"},
+			command:     "kubectl get pods",
+			toolName:    "kubectl",
+			description: "list all pods",
 		},
 		{
-			name:        "docker",
-			command:     "/usr/bin/docker",
-			description: "Container tool",
-			examples:    []string{"docker ps", "docker images"},
+			command:     "kubectl get nodes",
+			toolName:    "kubectl",
+			description: "list all nodes",
+		},
+		{
+			command:     "docker ps",
+			toolName:    "docker",
+			description: "list containers",
 		},
 	}
 
-	for _, tool := range tools {
-		_, err := svc.CreateTool(ctx, dto.CreateToolRequest{
-			Name:        tool.name,
-			Command:     tool.command,
-			Description: tool.description,
-			Examples:    tool.examples,
+	for _, ex := range examples {
+		_, err := svc.CreateExample(ctx, dto.CreateExampleRequest{
+			Command:     ex.command,
+			ToolName:    ex.toolName,
+			Description: ex.description,
 		})
 		if err != nil {
-			t.Fatalf("Failed to add tool %s: %v", tool.name, err)
+			t.Fatalf("Failed to add example %s: %v", ex.command, err)
 		}
 	}
 
 	// List and verify
-	resp, err := svc.ListTools(ctx)
+	resp, err := svc.ListExamples(ctx)
 	if err != nil {
-		t.Fatalf("Failed to list tools: %v", err)
+		t.Fatalf("Failed to list examples: %v", err)
+	}
+
+	if resp.Count != 3 {
+		t.Errorf("Expected 3 examples, got %d", resp.Count)
+	}
+
+	// Update one example
+	_, err = svc.UpdateExample(ctx, dto.UpdateExampleRequest{
+		Command:        "kubectl get pods",
+		NewDescription: "updated description",
+	})
+	if err != nil {
+		t.Fatalf("Failed to update example: %v", err)
+	}
+
+	// Verify update
+	updated, err := svc.GetExample(ctx, "kubectl get pods")
+	if err != nil {
+		t.Fatalf("Failed to get updated example: %v", err)
+	}
+	if updated.Description != "updated description" {
+		t.Errorf("Expected updated description, got %s", updated.Description)
+	}
+
+	// Remove one example
+	err = svc.DeleteExample(ctx, "kubectl get pods")
+	if err != nil {
+		t.Fatalf("Failed to remove example: %v", err)
+	}
+
+	// Verify only two remain
+	resp, err = svc.ListExamples(ctx)
+	if err != nil {
+		t.Fatalf("Failed to list examples: %v", err)
 	}
 
 	if resp.Count != 2 {
-		t.Errorf("Expected 2 tools, got %d", resp.Count)
-	}
-
-	// Remove one tool
-	err = svc.DeleteTool(ctx, "kubectl")
-	if err != nil {
-		t.Fatalf("Failed to remove tool: %v", err)
-	}
-
-	// Verify only one remains
-	resp, err = svc.ListTools(ctx)
-	if err != nil {
-		t.Fatalf("Failed to list tools: %v", err)
-	}
-
-	if resp.Count != 1 {
-		t.Errorf("Expected 1 tool after removal, got %d", resp.Count)
-	}
-
-	if resp.Tools[0].Name != "docker" {
-		t.Errorf("Expected docker to remain, got %s", resp.Tools[0].Name)
+		t.Errorf("Expected 2 examples after removal, got %d", resp.Count)
 	}
 
 	// Verify YAML file was updated
@@ -234,29 +323,30 @@ func TestCLIDefaultListBehavior(t *testing.T) {
 
 	// Test empty list
 	output := captureOutput(func() {
-		listTools()
+		listExamples()
 	})
 
-	if !strings.Contains(output, "No tools found") {
-		t.Error("Should show 'No tools found' message when empty")
+	if !strings.Contains(output, "No examples found") {
+		t.Error("Should show 'No examples found' message when empty")
 	}
 
-	// Add a tool
-	svc.CreateTool(ctx, dto.CreateToolRequest{
-		Name:    "kubectl",
-		Command: "/usr/bin/kubectl",
+	// Add an example
+	svc.CreateExample(ctx, dto.CreateExampleRequest{
+		Command:     "kubectl get pods",
+		ToolName:    "kubectl",
+		Description: "list pods",
 	})
 
 	// Test non-empty list
 	output = captureOutput(func() {
-		listTools()
+		listExamples()
 	})
 
 	if !strings.Contains(output, "kubectl") {
 		t.Error("Should show tool in list")
 	}
 
-	if !strings.Contains(output, "Total: 1 tools") {
+	if !strings.Contains(output, "Total: 1 examples") {
 		t.Error("Should show total count")
 	}
 }
@@ -266,34 +356,34 @@ func TestCLIPersistence(t *testing.T) {
 	filePath := filepath.Join(tmpDir, "tools.yaml")
 
 	// Create first instance
-	repo1, _ := yaml.NewYAMLToolRepository(filePath)
-	svc1 := service.NewToolService(repo1)
+	repo1, _ := yaml.NewYAMLExampleRepository(filePath)
+	svc1 := service.NewExampleService(repo1)
 
-	// Add a tool
+	// Add examples
 	ctx := context.Background()
-	svc1.CreateTool(ctx, dto.CreateToolRequest{
-		Name:        "kubectl",
-		Command:     "/usr/bin/kubectl",
-		Description: "Kubernetes CLI",
-		Examples:    []string{"kubectl get pods"},
+	svc1.CreateExample(ctx, dto.CreateExampleRequest{
+		Command:     "kubectl get pods",
+		ToolName:    "kubectl",
+		Description: "list pods",
+	})
+	svc1.CreateExample(ctx, dto.CreateExampleRequest{
+		Command:     "kubectl get nodes",
+		ToolName:    "kubectl",
+		Description: "list nodes",
 	})
 
 	// Create second instance (simulating restart)
-	repo2, _ := yaml.NewYAMLToolRepository(filePath)
-	svc2 := service.NewToolService(repo2)
+	repo2, _ := yaml.NewYAMLExampleRepository(filePath)
+	svc2 := service.NewExampleService(repo2)
 
-	// Verify tool persisted
-	resp, err := svc2.ListTools(ctx)
+	// Verify examples persisted
+	resp, err := svc2.ListExamples(ctx)
 	if err != nil {
-		t.Fatalf("Failed to list tools: %v", err)
+		t.Fatalf("Failed to list examples: %v", err)
 	}
 
-	if resp.Count != 1 {
-		t.Errorf("Expected 1 persisted tool, got %d", resp.Count)
-	}
-
-	if resp.Tools[0].Name != "kubectl" {
-		t.Errorf("Expected kubectl, got %s", resp.Tools[0].Name)
+	if resp.Count != 2 {
+		t.Errorf("Expected 2 persisted examples, got %d", resp.Count)
 	}
 }
 
@@ -315,26 +405,93 @@ func TestCLIWithXDGConfigHome(t *testing.T) {
 	}
 
 	// Create repository with this path
-	repo, err := yaml.NewYAMLToolRepository(cfg.StorageFilePath)
+	repo, err := yaml.NewYAMLExampleRepository(cfg.StorageFilePath)
 	if err != nil {
 		t.Fatalf("Failed to create repository: %v", err)
 	}
 
-	svc := service.NewToolService(repo)
+	svc := service.NewExampleService(repo)
 
-	// Add a tool
+	// Add an example
 	ctx := context.Background()
-	_, err = svc.CreateTool(ctx, dto.CreateToolRequest{
-		Name:    "test-tool",
-		Command: "/usr/bin/test",
+	_, err = svc.CreateExample(ctx, dto.CreateExampleRequest{
+		Command:     "test command",
+		ToolName:    "test-tool",
+		Description: "test description",
 	})
 
 	if err != nil {
-		t.Fatalf("Failed to create tool: %v", err)
+		t.Fatalf("Failed to create example: %v", err)
 	}
 
 	// Verify file was created in correct location
 	if _, err := os.Stat(expectedPath); os.IsNotExist(err) {
 		t.Errorf("File should exist at %s", expectedPath)
+	}
+}
+
+func TestCLIMultipleExamplesForSameTool(t *testing.T) {
+	_, cleanup := setupTestCLI(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	// Add multiple examples for same tool
+	examples := []dto.CreateExampleRequest{
+		{
+			Command:     "lsof -i :8080",
+			ToolName:    "lsof",
+			Description: "check port 8080",
+		},
+		{
+			Command:     "lsof -i :3000",
+			ToolName:    "lsof",
+			Description: "check port 3000",
+		},
+		{
+			Command:     "lsof -t -i :8080 | xargs kill -9",
+			ToolName:    "lsof",
+			Description: "kill process on port 8080",
+		},
+	}
+
+	for _, req := range examples {
+		_, err := svc.CreateExample(ctx, req)
+		if err != nil {
+			t.Fatalf("Failed to add example: %v", err)
+		}
+	}
+
+	// Verify all examples exist
+	resp, err := svc.ListExamples(ctx)
+	if err != nil {
+		t.Fatalf("Failed to list examples: %v", err)
+	}
+
+	if resp.Count != 3 {
+		t.Errorf("Expected 3 examples, got %d", resp.Count)
+	}
+
+	// Verify all are for lsof
+	for _, ex := range resp.Examples {
+		if ex.ToolName != "lsof" {
+			t.Errorf("Expected tool name lsof, got %s", ex.ToolName)
+		}
+	}
+
+	// Delete one example by command
+	err = svc.DeleteExample(ctx, "lsof -i :3000")
+	if err != nil {
+		t.Fatalf("Failed to delete example: %v", err)
+	}
+
+	// Verify only 2 remain
+	resp, err = svc.ListExamples(ctx)
+	if err != nil {
+		t.Fatalf("Failed to list examples: %v", err)
+	}
+
+	if resp.Count != 2 {
+		t.Errorf("Expected 2 examples after deletion, got %d", resp.Count)
 	}
 }

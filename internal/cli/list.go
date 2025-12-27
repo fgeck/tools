@@ -11,7 +11,7 @@ func newListCmd() *cobra.Command {
 		Short:   "List all tool bookmarks",
 		Long:    "Display all CLI tool bookmarks in a formatted table",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return listTools()
+			return listExamples()
 		},
 	}
 

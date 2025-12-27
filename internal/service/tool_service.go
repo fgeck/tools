@@ -6,20 +6,23 @@ import (
 	"github.com/fgeck/tools/internal/dto"
 )
 
-// ToolService defines business logic operations (CLI and REST API agnostic)
-type ToolService interface {
-	// CreateTool adds a new tool bookmark
-	CreateTool(ctx context.Context, req dto.CreateToolRequest) (*dto.ToolResponse, error)
+// ExampleService defines business logic operations (CLI and REST API agnostic)
+type ExampleService interface {
+	// CreateExample adds a new example bookmark
+	CreateExample(ctx context.Context, req dto.CreateExampleRequest) (*dto.ExampleResponse, error)
 
-	// GetTool retrieves a tool by name
-	GetTool(ctx context.Context, name string) (*dto.ToolResponse, error)
+	// GetExample retrieves an example by command
+	GetExample(ctx context.Context, command string) (*dto.ExampleResponse, error)
 
-	// ListTools retrieves all tools
-	ListTools(ctx context.Context) (*dto.ListToolsResponse, error)
+	// ListExamples retrieves all examples
+	ListExamples(ctx context.Context) (*dto.ListExamplesResponse, error)
 
-	// UpdateTool modifies an existing tool
-	UpdateTool(ctx context.Context, name string, req dto.UpdateToolRequest) (*dto.ToolResponse, error)
+	// UpdateExample modifies an existing example
+	UpdateExample(ctx context.Context, req dto.UpdateExampleRequest) (*dto.ExampleResponse, error)
 
-	// DeleteTool removes a tool by name
-	DeleteTool(ctx context.Context, name string) error
+	// DeleteExample removes an example by command
+	DeleteExample(ctx context.Context, command string) error
+
+	// DeleteToolExamples removes all examples for a tool name
+	DeleteToolExamples(ctx context.Context, toolName string) error
 }

@@ -1,11 +1,13 @@
 # tools
 
-A command-line bookmark manager for terminal tools. Store and retrieve information about CLI tools including their paths, descriptions, and usage examples.
+A command-line bookmark manager for terminal tools. Store and retrieve CLI tools with their usage examples - each example has a description and command.
 
 ## Features
 
+- Interactive TUI for browsing and selecting commands
 - Add, list, and remove tool bookmarks
-- Store tool metadata: name, command path, description, examples
+- Store examples with descriptions for easy discovery
+- Examples are automatically copied to clipboard when selected
 - YAML-based persistent storage following XDG Base Directory specification
 - Clean architecture with separated layers (domain, repository, service, CLI)
 - Easy to extend with database backends or REST API
@@ -27,6 +29,7 @@ Move the binary to a directory in your PATH:
 ```bash
 sudo mv tools /usr/local/bin/
 ```
+
 
 ### Docker
 
@@ -50,35 +53,73 @@ alias tools='docker run -v ~/.config/tools:/root/.config/tools tools'
 
 ## Usage
 
-### List all tools
+### Interactive TUI Mode (Default)
+
+By default, running `tools` launches an interactive terminal UI:
 
 ```bash
 tools
-# or
-tools list
 ```
 
-### Add a new tool
+The TUI displays all your tools' examples in a table format. Each row shows:
+- `[Tool Name]` - The tool this example belongs to
+- `Description` - What the example does
+- The actual command is shown in the item description
+
+**Keyboard shortcuts:**
+- `↑/↓` or `j/k` - Navigate examples
+- `Enter` - Select command (copies to clipboard)
+- `/` - Filter/search examples
+- `a` - Add new tool with example
+- `d` - Delete tool
+- `Esc` - Quit
+
+**Example display format:**
+```
+[lsof] list all ports at xxx
+  → lsof -i :54321
+```
+
+**How it works:**
+
+When you select an example and press Enter, the command is automatically copied to your clipboard using OSC 52 (supported by most modern terminals). Simply paste it with Ctrl+V (or Cmd+V) and execute.
+
+### Classic CLI Mode
+
+Use the `--cli` flag for traditional command-line mode:
 
 ```bash
-tools add -n <name> -c <command> [-d <description>] [-e <example>]
+tools --cli          # List all tools in table format
+tools list --cli     # Same as above
 ```
+
+### Add a new tool (CLI mode)
+
+```bash
+tools add -n <name> -c <command> [-d <description>] [-e "description|command"]
+```
+
+Examples must be in the format `"description|command"`.
 
 Example:
 
 ```bash
-tools add -n kubectl \
-  -c /usr/local/bin/kubectl \
-  -d "Kubernetes command-line tool" \
-  -e "kubectl get pods" \
-  -e "kubectl describe node"
+tools add -n lsof \
+  -c /usr/bin/lsof \
+  -d "List open files and network connections" \
+  -e "list all ports at xxx|lsof -i :54321" \
+  -e "show all network connections|lsof -i"
 ```
 
-### Remove a tool
+Or use the TUI mode and press `a` to add interactively (easier for multiple fields).
+
+### Remove a tool (CLI mode)
 
 ```bash
 tools remove -n <name>
 ```
+
+Or use the TUI mode, select a tool, and press `d` to delete.
 
 ### Get help
 

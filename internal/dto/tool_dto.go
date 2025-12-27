@@ -1,34 +1,31 @@
 package dto
 
-// CreateToolRequest - DTO for creating a new tool
-type CreateToolRequest struct {
-	Name        string   `json:"name" yaml:"name"`
-	Command     string   `json:"command" yaml:"command"`
-	Description string   `json:"description" yaml:"description"`
-	Examples    []string `json:"examples" yaml:"examples"`
+// CreateExampleRequest - DTO for creating a new example
+type CreateExampleRequest struct {
+	Command     string `json:"command" yaml:"command"`         // The actual command (primary key)
+	ToolName    string `json:"tool_name" yaml:"tool_name"`     // Tool name for grouping
+	Description string `json:"description" yaml:"description"` // What this example does
 }
 
-// UpdateToolRequest - DTO for updating a tool
-type UpdateToolRequest struct {
-	Name        *string   `json:"name,omitempty" yaml:"name,omitempty"`
-	Command     *string   `json:"command,omitempty" yaml:"command,omitempty"`
-	Description *string   `json:"description,omitempty" yaml:"description,omitempty"`
-	Examples    *[]string `json:"examples,omitempty" yaml:"examples,omitempty"`
+// ExampleResponse - DTO for returning example data
+type ExampleResponse struct {
+	Command     string `json:"command" yaml:"command"`
+	ToolName    string `json:"tool_name" yaml:"tool_name"`
+	Description string `json:"description" yaml:"description"`
+	CreatedAt   string `json:"created_at" yaml:"created_at"`
+	UpdatedAt   string `json:"updated_at" yaml:"updated_at"`
 }
 
-// ToolResponse - DTO for returning tool data
-type ToolResponse struct {
-	ID          string   `json:"id" yaml:"id"`
-	Name        string   `json:"name" yaml:"name"`
-	Command     string   `json:"command" yaml:"command"`
-	Description string   `json:"description" yaml:"description"`
-	Examples    []string `json:"examples" yaml:"examples"`
-	CreatedAt   string   `json:"created_at" yaml:"created_at"`
-	UpdatedAt   string   `json:"updated_at" yaml:"updated_at"`
+// UpdateExampleRequest - DTO for updating an existing example
+type UpdateExampleRequest struct {
+	Command        string `json:"command" yaml:"command"`                 // The command to update (primary key)
+	NewToolName    string `json:"new_tool_name" yaml:"new_tool_name"`     // New tool name (optional)
+	NewDescription string `json:"new_description" yaml:"new_description"` // New description (optional)
+	NewCommand     string `json:"new_command" yaml:"new_command"`         // New command (optional)
 }
 
-// ListToolsResponse - DTO for listing multiple tools
-type ListToolsResponse struct {
-	Tools []ToolResponse `json:"tools" yaml:"tools"`
-	Count int            `json:"count" yaml:"count"`
+// ListExamplesResponse - DTO for listing multiple examples
+type ListExamplesResponse struct {
+	Examples []ExampleResponse `json:"examples" yaml:"examples"`
+	Count    int               `json:"count" yaml:"count"`
 }

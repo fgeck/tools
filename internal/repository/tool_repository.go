@@ -6,30 +6,31 @@ import (
 	"github.com/fgeck/tools/internal/domain/models"
 )
 
-// ToolRepository defines the interface for tool persistence
-// This abstraction allows easy swapping between YAML, SQLite, PostgreSQL, etc.
-type ToolRepository interface {
-	// Create adds a new tool to storage
-	Create(ctx context.Context, tool *models.Tool) error
+// ExampleRepository defines the interface for example persistence
+// Command is the primary key for all operations
+type ExampleRepository interface {
+	// Create adds a new example to storage
+	// Returns error if command already exists
+	Create(ctx context.Context, example *models.ToolExample) error
 
-	// GetByID retrieves a tool by its ID
-	GetByID(ctx context.Context, id string) (*models.Tool, error)
+	// GetByCommand retrieves an example by its command (primary key)
+	GetByCommand(ctx context.Context, command string) (*models.ToolExample, error)
 
-	// GetByName retrieves a tool by its name (for user-friendly lookup)
-	GetByName(ctx context.Context, name string) (*models.Tool, error)
+	// List retrieves all examples
+	List(ctx context.Context) ([]*models.ToolExample, error)
 
-	// List retrieves all tools
-	List(ctx context.Context) ([]*models.Tool, error)
+	// ListByToolName retrieves all examples for a specific tool name
+	ListByToolName(ctx context.Context, toolName string) ([]*models.ToolExample, error)
 
-	// Update modifies an existing tool
-	Update(ctx context.Context, tool *models.Tool) error
+	// Update modifies an existing example (identified by command)
+	Update(ctx context.Context, example *models.ToolExample) error
 
-	// Delete removes a tool by ID
-	Delete(ctx context.Context, id string) error
+	// Delete removes an example by command (primary key)
+	Delete(ctx context.Context, command string) error
 
-	// DeleteByName removes a tool by name (convenience for CLI)
-	DeleteByName(ctx context.Context, name string) error
+	// DeleteByToolName removes all examples for a tool name
+	DeleteByToolName(ctx context.Context, toolName string) error
 
-	// Exists checks if a tool with the given name exists
-	Exists(ctx context.Context, name string) (bool, error)
+	// Exists checks if an example with the given command exists
+	Exists(ctx context.Context, command string) (bool, error)
 }
