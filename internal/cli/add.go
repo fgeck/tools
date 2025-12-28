@@ -42,11 +42,11 @@ Each example requires:
 		},
 	}
 
-	cmd.Flags().StringVarP(&addToolName, "tool", "t", "", "Tool name for grouping (required)")
+	cmd.Flags().StringVarP(&addToolName, "name", "n", "", "Tool name for grouping (required)")
 	cmd.Flags().StringVarP(&addDesc, "description", "d", "", "Description - what it does (required)")
 	cmd.Flags().StringVarP(&addExampleCmd, "command", "c", "", "The actual command to execute (required)")
 
-	_ = cmd.MarkFlagRequired("tool")
+	_ = cmd.MarkFlagRequired("name")
 	_ = cmd.MarkFlagRequired("description")
 	_ = cmd.MarkFlagRequired("command")
 

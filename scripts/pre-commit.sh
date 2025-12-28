@@ -60,9 +60,9 @@ CHECKS_FAILED=false
 echo "📦 Step 1/4: Running go mod tidy..."
 if go mod tidy; then
     if ! git diff --exit-code go.mod go.sum > /dev/null 2>&1; then
-        print_status "error" "go.mod or go.sum was modified by 'go mod tidy'"
-        print_status "info" "Please stage the changes and commit again"
-        CHECKS_FAILED=true
+        print_status "info" "go.mod or go.sum was modified by 'go mod tidy'"
+        git add go.mod go.sum
+        print_status "success" "Changes automatically staged"
     else
         print_status "success" "go mod tidy - no changes"
     fi
@@ -82,12 +82,14 @@ if [ -n "$STAGED_GO_FILES" ]; then
 
     # Check if formatting changed anything
     if ! git diff --exit-code $STAGED_GO_FILES > /dev/null 2>&1; then
-        print_status "error" "Code is not formatted"
-        print_status "info" "Files were auto-formatted. Please stage the changes and commit again"
+        print_status "info" "Code was auto-formatted"
         echo ""
         echo "Formatted files:"
         git diff --name-only $STAGED_GO_FILES
-        CHECKS_FAILED=true
+        echo ""
+        # Automatically add the formatted files
+        git add $STAGED_GO_FILES
+        print_status "success" "Changes automatically staged"
     else
         print_status "success" "go fmt - all files formatted correctly"
     fi

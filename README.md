@@ -1,35 +1,35 @@
 # tools
 
-A command-line bookmark manager for terminal tools. Store and retrieve CLI tools with their usage examples - each example has a description and command.
+A command-line bookmark manager for terminal commands. Store and retrieve CLI command examples with descriptions.
 
 ## Features
 
-- Interactive TUI for browsing and selecting commands
-- Add, list, and remove tool bookmarks
-- Store examples with descriptions for easy discovery
-- Examples are automatically copied to clipboard when selected
-- YAML-based persistent storage following XDG Base Directory specification
-- Clean architecture with separated layers (domain, repository, service, CLI)
-- Easy to extend with database backends or REST API
+- **Interactive TUI** for browsing and selecting commands
+- **Add, edit, list, and remove** command examples
+- **Multiple examples per tool** - group related commands by tool name
+- **Auto-copy to clipboard** when selecting in TUI
+- **YAML-based storage** following XDG Base Directory specification
+- **Clean architecture** - easy to extend with database backends or REST API
 
 ## Installation
 
 ### From Source
 
-Requires Go 1.25 or later.
+Requires Go 1.21 or later.
 
 ```bash
 git clone https://github.com/fgeck/tools.git
 cd tools
-go build -o tools ./cmd/tools
-```
-
-Move the binary to a directory in your PATH:
-
-```bash
+make build
 sudo mv tools /usr/local/bin/
 ```
 
+### Via Homebrew (Coming Soon)
+
+```bash
+brew tap fgeck/tools
+brew install tools
+```
 
 ### Docker
 
@@ -42,86 +42,94 @@ docker build -t tools .
 Run with a volume to persist data:
 
 ```bash
-docker run -v ~/.config/tools:/root/.config/tools tools list
-```
-
-Or use an alias for convenience:
-
-```bash
-alias tools='docker run -v ~/.config/tools:/root/.config/tools tools'
+docker run -v ~/.config/tools:/root/.config/tools tools list --cli
 ```
 
 ## Usage
 
 ### Interactive TUI Mode (Default)
 
-By default, running `tools` launches an interactive terminal UI:
+Simply run `tools` to launch the interactive terminal UI:
 
 ```bash
 tools
 ```
 
-The TUI displays all your tools' examples in a table format. Each row shows:
-- `[Tool Name]` - The tool this example belongs to
-- `Description` - What the example does
-- The actual command is shown in the item description
-
 **Keyboard shortcuts:**
-- `↑/↓` or `j/k` - Navigate examples
-- `Enter` - Select command (copies to clipboard)
-- `/` - Filter/search examples
-- `a` - Add new tool with example
-- `d` - Delete tool
-- `Esc` - Quit
+- `↑/↓` - Navigate examples
+- `Enter` - Select command (copies to clipboard and prints to stdout)
+- `a` - Add new example
+- `e` - Edit selected example
+- `d` - Delete selected example
+- `q/Esc` - Quit
 
-**Example display format:**
-```
-[lsof] list all ports at xxx
-  → lsof -i :54321
-```
+When you select an example with Enter, the command is:
+1. Copied to clipboard using OSC 52 (supported by most modern terminals)
+2. Printed to stdout
 
-**How it works:**
+### CLI Commands
 
-When you select an example and press Enter, the command is automatically copied to your clipboard using OSC 52 (supported by most modern terminals). Simply paste it with Ctrl+V (or Cmd+V) and execute.
-
-### Classic CLI Mode
-
-Use the `--cli` flag for traditional command-line mode:
+#### Add Example
 
 ```bash
-tools --cli          # List all tools in table format
-tools list --cli     # Same as above
+tools add -n <tool-name> -c <command> -d <description>
 ```
-
-### Add a new tool (CLI mode)
-
-```bash
-tools add -n <name> -c <command> [-d <description>] [-e "description|command"]
-```
-
-Examples must be in the format `"description|command"`.
 
 Example:
-
 ```bash
-tools add -n lsof \
-  -c /usr/bin/lsof \
-  -d "List open files and network connections" \
-  -e "list all ports at xxx|lsof -i :54321" \
-  -e "show all network connections|lsof -i"
+tools add -n lsof -c "lsof -i :8080" -d "check port 8080"
 ```
 
-Or use the TUI mode and press `a` to add interactively (easier for multiple fields).
-
-### Remove a tool (CLI mode)
+#### List Examples
 
 ```bash
-tools remove -n <name>
+tools list --cli
+# or
+tools --cli
 ```
 
-Or use the TUI mode, select a tool, and press `d` to delete.
+#### Edit Example
 
-### Get help
+Edit by specifying the command (primary key) and the fields to update:
+
+```bash
+tools edit -c <current-command> [--new-tool <name>] [--new-description <desc>] [--new-command <cmd>]
+```
+
+Examples:
+```bash
+# Change description
+tools edit -c "lsof -i :8080" -d "check if port 8080 is in use"
+
+# Change command itself
+tools edit -c "lsof -i :8080" -n "lsof -t -i :8080"
+
+# Change multiple fields
+tools edit -c "lsof -i :8080" -t "lsof" -d "new description" -n "new command"
+```
+
+#### Remove Example(s)
+
+Remove specific example by command:
+```bash
+tools rm -c <command>
+```
+
+Remove all examples for a tool:
+```bash
+tools rm -n <tool-name>
+```
+
+Examples:
+```bash
+# Remove specific example
+tools rm -c "lsof -i :8080"
+
+# Remove all lsof examples
+tools rm -n lsof
+```
+
+#### Get Help
 
 ```bash
 tools --help
@@ -130,13 +138,45 @@ tools <command> --help
 
 ## Command Aliases
 
-- `add` can be shortened to `a`
-- `list` can be shortened to `l` or `ls`
-- `remove` can be shortened to `rm`
+- `add` → `a`
+- `list` → `l`
+- `remove` → `rm`, `delete`
+- `edit` → `e`, `update`
 
 ## Storage
 
-Tool bookmarks are stored in `~/.config/tools/tools.yaml` by default. The location follows the XDG Base Directory specification and can be overridden by setting the `XDG_CONFIG_HOME` environment variable.
+Examples are stored in `~/.config/tools/tools.yaml` by default.
+
+The location follows XDG Base Directory specification and can be overridden with `XDG_CONFIG_HOME`:
+
+```bash
+export XDG_CONFIG_HOME=/custom/path
+```
+
+## Example Workflow
+
+```bash
+# Add some examples
+tools add -n kubectl -c "kubectl get pods" -d "list all pods"
+tools add -n kubectl -c "kubectl get nodes" -d "list all nodes"
+tools add -n docker -c "docker ps -a" -d "list all containers"
+
+# Browse in TUI
+tools
+# Navigate with arrows, press Enter to copy command
+
+# List in CLI
+tools list --cli
+
+# Edit an example
+tools edit -c "docker ps -a" -d "list all containers including stopped"
+
+# Remove specific example
+tools rm -c "kubectl get nodes"
+
+# Remove all kubectl examples
+tools rm -n kubectl
+```
 
 ## Development
 
@@ -148,54 +188,57 @@ make build
 
 ### Testing
 
-Run all tests:
-
 ```bash
-make test
-```
-
-Run only unit tests:
-
-```bash
-make unit-test
-```
-
-Run only integration tests:
-
-```bash
-make integration-test
-```
-
-Generate coverage report:
-
-```bash
-make coverage
+make test              # Run all tests
+make unit-test         # Unit tests only
+make integration-test  # Integration tests only
+make coverage          # Generate coverage report
 ```
 
 ### Code Quality
 
-Format code:
-
 ```bash
-make fmt
+make pre-commit        # Run all checks (tidy, fmt, vet, lint)
+make install-hooks     # Install pre-commit Git hook
 ```
 
-Run linter:
-
-```bash
-make lint
-```
+The pre-commit hook automatically runs before each commit:
+- `go mod tidy`
+- `go fmt`
+- `go vet`
+- `golangci-lint`
 
 ### Other Commands
 
 ```bash
-make help          # Show all available targets
-make clean         # Remove build artifacts
-make install       # Install to GOPATH/bin
-make deps          # Download dependencies
-make docker-build  # Build Docker image
-make all           # Run all checks and build
+make help              # Show all available targets
+make clean             # Remove build artifacts
+make install           # Install to GOPATH/bin
+make deps              # Download dependencies
+make docker-build      # Build Docker image
+make all               # Run all checks and build
 ```
+
+## Architecture
+
+The project follows Clean Architecture principles:
+
+```
+internal/
+├── cli/           # CLI commands (Cobra)
+├── config/        # Configuration management
+├── domain/models/ # Domain entities (ToolExample)
+├── dto/           # Data transfer objects
+├── repository/    # Data access layer (interface + YAML impl)
+├── service/       # Business logic
+└── tui/           # Terminal UI (Bubble Tea)
+```
+
+**Key Design:**
+- **Repository pattern** - Storage abstraction (easy to swap YAML → PostgreSQL)
+- **Service layer** - Business logic (reusable for REST API)
+- **Command as primary key** - Each command string is unique
+- **Tool name for grouping** - Multiple examples per tool
 
 ## License
 
