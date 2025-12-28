@@ -34,7 +34,7 @@ Use -n to remove all examples for a tool name.`,
 
 			// Remove by command (single example)
 			if removeCommand != "" {
-				if err := svc.DeleteExample(ctx, removeCommand); err != nil {
+				if err := svc.DeleteBookmark(ctx, removeCommand); err != nil {
 					return fmt.Errorf("failed to remove example: %w", err)
 				}
 				fmt.Printf("Successfully removed example: %s\n", removeCommand)
@@ -43,7 +43,7 @@ Use -n to remove all examples for a tool name.`,
 
 			// Remove by tool name (all examples for that tool)
 			if removeToolName != "" {
-				if err := svc.DeleteToolExamples(ctx, removeToolName); err != nil {
+				if err := svc.DeleteToolBookmarks(ctx, removeToolName); err != nil {
 					return fmt.Errorf("failed to remove examples for tool '%s': %w", removeToolName, err)
 				}
 				fmt.Printf("Successfully removed all examples for tool: %s\n", removeToolName)

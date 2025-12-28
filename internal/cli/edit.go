@@ -29,14 +29,14 @@ Only the fields you provide will be updated.`,
 				return fmt.Errorf("at least one field must be provided for update (--new-tool, --new-description, or --new-command)")
 			}
 
-			req := dto.UpdateExampleRequest{
+			req := dto.UpdateBookmarkRequest{
 				Command:        editCommand,
 				NewToolName:    editNewToolName,
 				NewDescription: editNewDesc,
 				NewCommand:     editNewCommand,
 			}
 
-			resp, err := svc.UpdateExample(context.Background(), req)
+			resp, err := svc.UpdateBookmark(context.Background(), req)
 			if err != nil {
 				return fmt.Errorf("failed to edit example: %w", err)
 			}

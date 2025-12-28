@@ -23,12 +23,12 @@ func setupTestCLI(t *testing.T) (string, func()) {
 	filePath := filepath.Join(tmpDir, "tools.yaml")
 
 	// Initialize repository and service
-	repo, err := yaml.NewYAMLExampleRepository(filePath)
+	repo, err := yaml.NewYAMLBookmarkRepository(filePath)
 	if err != nil {
 		t.Fatalf("Failed to create repository: %v", err)
 	}
 
-	testSvc := service.NewExampleService(repo)
+	testSvc := service.NewBookmarkService(repo)
 	Initialize(testSvc)
 
 	// Return cleanup function
@@ -60,7 +60,7 @@ func TestCLIAddCommand(t *testing.T) {
 
 	// Simulate add command
 	ctx := context.Background()
-	_, err := svc.CreateExample(ctx, dto.CreateExampleRequest{
+	_, err := svc.CreateBookmark(ctx, dto.CreateBookmarkRequest{
 		Command:     "kubectl get pods",
 		ToolName:    "kubectl",
 		Description: "list all pods",
@@ -71,7 +71,7 @@ func TestCLIAddCommand(t *testing.T) {
 	}
 
 	// Verify example was created
-	resp, err := svc.ListExamples(ctx)
+	resp, err := svc.ListBookmarks(ctx)
 	if err != nil {
 		t.Fatalf("Failed to list examples: %v", err)
 	}
@@ -99,7 +99,7 @@ func TestCLIListCommand(t *testing.T) {
 	}
 
 	for _, ex := range examples {
-		svc.CreateExample(ctx, dto.CreateExampleRequest{
+		svc.CreateBookmark(ctx, dto.CreateBookmarkRequest{
 			Command:     ex.command,
 			ToolName:    ex.toolName,
 			Description: ex.description,
@@ -130,14 +130,14 @@ func TestCLIEditCommand(t *testing.T) {
 	ctx := context.Background()
 
 	// Add an example
-	svc.CreateExample(ctx, dto.CreateExampleRequest{
+	svc.CreateBookmark(ctx, dto.CreateBookmarkRequest{
 		Command:     "kubectl get pods",
 		ToolName:    "kubectl",
 		Description: "old description",
 	})
 
 	// Edit the example
-	_, err := svc.UpdateExample(ctx, dto.UpdateExampleRequest{
+	_, err := svc.UpdateBookmark(ctx, dto.UpdateBookmarkRequest{
 		Command:        "kubectl get pods",
 		NewDescription: "new description",
 	})
@@ -146,7 +146,7 @@ func TestCLIEditCommand(t *testing.T) {
 	}
 
 	// Verify it was updated
-	example, err := svc.GetExample(ctx, "kubectl get pods")
+	example, err := svc.GetBookmark(ctx, "kubectl get pods")
 	if err != nil {
 		t.Fatalf("Failed to get example: %v", err)
 	}
@@ -163,14 +163,14 @@ func TestCLIEditCommandChangeCommand(t *testing.T) {
 	ctx := context.Background()
 
 	// Add an example
-	svc.CreateExample(ctx, dto.CreateExampleRequest{
+	svc.CreateBookmark(ctx, dto.CreateBookmarkRequest{
 		Command:     "kubectl get pods",
 		ToolName:    "kubectl",
 		Description: "list pods",
 	})
 
 	// Edit the command (primary key)
-	_, err := svc.UpdateExample(ctx, dto.UpdateExampleRequest{
+	_, err := svc.UpdateBookmark(ctx, dto.UpdateBookmarkRequest{
 		Command:    "kubectl get pods",
 		NewCommand: "kubectl get pods -A",
 	})
@@ -179,13 +179,13 @@ func TestCLIEditCommandChangeCommand(t *testing.T) {
 	}
 
 	// Verify old command is gone
-	_, err = svc.GetExample(ctx, "kubectl get pods")
+	_, err = svc.GetBookmark(ctx, "kubectl get pods")
 	if err == nil {
 		t.Error("Old command should not exist")
 	}
 
 	// Verify new command exists
-	example, err := svc.GetExample(ctx, "kubectl get pods -A")
+	example, err := svc.GetBookmark(ctx, "kubectl get pods -A")
 	if err != nil {
 		t.Fatalf("Failed to get example with new command: %v", err)
 	}
@@ -202,20 +202,20 @@ func TestCLIRemoveCommand(t *testing.T) {
 	ctx := context.Background()
 
 	// Add an example
-	svc.CreateExample(ctx, dto.CreateExampleRequest{
+	svc.CreateBookmark(ctx, dto.CreateBookmarkRequest{
 		Command:     "kubectl get pods",
 		ToolName:    "kubectl",
 		Description: "list pods",
 	})
 
 	// Remove the example
-	err := svc.DeleteExample(ctx, "kubectl get pods")
+	err := svc.DeleteBookmark(ctx, "kubectl get pods")
 	if err != nil {
 		t.Errorf("Remove command failed: %v", err)
 	}
 
 	// Verify it's gone
-	resp, err := svc.ListExamples(ctx)
+	resp, err := svc.ListBookmarks(ctx)
 	if err != nil {
 		t.Fatalf("Failed to list examples: %v", err)
 	}
@@ -255,7 +255,7 @@ func TestCLIEndToEndWorkflow(t *testing.T) {
 	}
 
 	for _, ex := range examples {
-		_, err := svc.CreateExample(ctx, dto.CreateExampleRequest{
+		_, err := svc.CreateBookmark(ctx, dto.CreateBookmarkRequest{
 			Command:     ex.command,
 			ToolName:    ex.toolName,
 			Description: ex.description,
@@ -266,7 +266,7 @@ func TestCLIEndToEndWorkflow(t *testing.T) {
 	}
 
 	// List and verify
-	resp, err := svc.ListExamples(ctx)
+	resp, err := svc.ListBookmarks(ctx)
 	if err != nil {
 		t.Fatalf("Failed to list examples: %v", err)
 	}
@@ -276,7 +276,7 @@ func TestCLIEndToEndWorkflow(t *testing.T) {
 	}
 
 	// Update one example
-	_, err = svc.UpdateExample(ctx, dto.UpdateExampleRequest{
+	_, err = svc.UpdateBookmark(ctx, dto.UpdateBookmarkRequest{
 		Command:        "kubectl get pods",
 		NewDescription: "updated description",
 	})
@@ -285,7 +285,7 @@ func TestCLIEndToEndWorkflow(t *testing.T) {
 	}
 
 	// Verify update
-	updated, err := svc.GetExample(ctx, "kubectl get pods")
+	updated, err := svc.GetBookmark(ctx, "kubectl get pods")
 	if err != nil {
 		t.Fatalf("Failed to get updated example: %v", err)
 	}
@@ -294,13 +294,13 @@ func TestCLIEndToEndWorkflow(t *testing.T) {
 	}
 
 	// Remove one example
-	err = svc.DeleteExample(ctx, "kubectl get pods")
+	err = svc.DeleteBookmark(ctx, "kubectl get pods")
 	if err != nil {
 		t.Fatalf("Failed to remove example: %v", err)
 	}
 
 	// Verify only two remain
-	resp, err = svc.ListExamples(ctx)
+	resp, err = svc.ListBookmarks(ctx)
 	if err != nil {
 		t.Fatalf("Failed to list examples: %v", err)
 	}
@@ -331,7 +331,7 @@ func TestCLIDefaultListBehavior(t *testing.T) {
 	}
 
 	// Add an example
-	svc.CreateExample(ctx, dto.CreateExampleRequest{
+	svc.CreateBookmark(ctx, dto.CreateBookmarkRequest{
 		Command:     "kubectl get pods",
 		ToolName:    "kubectl",
 		Description: "list pods",
@@ -356,28 +356,28 @@ func TestCLIPersistence(t *testing.T) {
 	filePath := filepath.Join(tmpDir, "tools.yaml")
 
 	// Create first instance
-	repo1, _ := yaml.NewYAMLExampleRepository(filePath)
-	svc1 := service.NewExampleService(repo1)
+	repo1, _ := yaml.NewYAMLBookmarkRepository(filePath)
+	svc1 := service.NewBookmarkService(repo1)
 
 	// Add examples
 	ctx := context.Background()
-	svc1.CreateExample(ctx, dto.CreateExampleRequest{
+	svc1.CreateBookmark(ctx, dto.CreateBookmarkRequest{
 		Command:     "kubectl get pods",
 		ToolName:    "kubectl",
 		Description: "list pods",
 	})
-	svc1.CreateExample(ctx, dto.CreateExampleRequest{
+	svc1.CreateBookmark(ctx, dto.CreateBookmarkRequest{
 		Command:     "kubectl get nodes",
 		ToolName:    "kubectl",
 		Description: "list nodes",
 	})
 
 	// Create second instance (simulating restart)
-	repo2, _ := yaml.NewYAMLExampleRepository(filePath)
-	svc2 := service.NewExampleService(repo2)
+	repo2, _ := yaml.NewYAMLBookmarkRepository(filePath)
+	svc2 := service.NewBookmarkService(repo2)
 
 	// Verify examples persisted
-	resp, err := svc2.ListExamples(ctx)
+	resp, err := svc2.ListBookmarks(ctx)
 	if err != nil {
 		t.Fatalf("Failed to list examples: %v", err)
 	}
@@ -405,16 +405,16 @@ func TestCLIWithXDGConfigHome(t *testing.T) {
 	}
 
 	// Create repository with this path
-	repo, err := yaml.NewYAMLExampleRepository(cfg.StorageFilePath)
+	repo, err := yaml.NewYAMLBookmarkRepository(cfg.StorageFilePath)
 	if err != nil {
 		t.Fatalf("Failed to create repository: %v", err)
 	}
 
-	svc := service.NewExampleService(repo)
+	svc := service.NewBookmarkService(repo)
 
 	// Add an example
 	ctx := context.Background()
-	_, err = svc.CreateExample(ctx, dto.CreateExampleRequest{
+	_, err = svc.CreateBookmark(ctx, dto.CreateBookmarkRequest{
 		Command:     "test command",
 		ToolName:    "test-tool",
 		Description: "test description",
@@ -437,7 +437,7 @@ func TestCLIMultipleExamplesForSameTool(t *testing.T) {
 	ctx := context.Background()
 
 	// Add multiple examples for same tool
-	examples := []dto.CreateExampleRequest{
+	examples := []dto.CreateBookmarkRequest{
 		{
 			Command:     "lsof -i :8080",
 			ToolName:    "lsof",
@@ -456,14 +456,14 @@ func TestCLIMultipleExamplesForSameTool(t *testing.T) {
 	}
 
 	for _, req := range examples {
-		_, err := svc.CreateExample(ctx, req)
+		_, err := svc.CreateBookmark(ctx, req)
 		if err != nil {
 			t.Fatalf("Failed to add example: %v", err)
 		}
 	}
 
 	// Verify all examples exist
-	resp, err := svc.ListExamples(ctx)
+	resp, err := svc.ListBookmarks(ctx)
 	if err != nil {
 		t.Fatalf("Failed to list examples: %v", err)
 	}
@@ -480,13 +480,13 @@ func TestCLIMultipleExamplesForSameTool(t *testing.T) {
 	}
 
 	// Delete one example by command
-	err = svc.DeleteExample(ctx, "lsof -i :3000")
+	err = svc.DeleteBookmark(ctx, "lsof -i :3000")
 	if err != nil {
 		t.Fatalf("Failed to delete example: %v", err)
 	}
 
 	// Verify only 2 remain
-	resp, err = svc.ListExamples(ctx)
+	resp, err = svc.ListBookmarks(ctx)
 	if err != nil {
 		t.Fatalf("Failed to list examples: %v", err)
 	}

@@ -14,38 +14,38 @@ import (
 )
 
 var (
-	// ErrExampleNotFound is returned when an example is not found
-	ErrExampleNotFound = errors.New("example not found")
-	// ErrExampleAlreadyExists is returned when attempting to create a duplicate example
-	ErrExampleAlreadyExists = errors.New("example with this command already exists")
+	// ErrBookmarkNotFound is returned when an example is not found
+	ErrBookmarkNotFound = errors.New("bookmark not found")
+	// ErrBookmarkAlreadyExists is returned when attempting to create a duplicate example
+	ErrBookmarkAlreadyExists = errors.New("example with this command already exists")
 )
 
-// YAMLExampleRepository implements ExampleRepository using YAML file storage
-type YAMLExampleRepository struct {
+// YAMLBookmarkRepository implements BookmarkRepository using YAML file storage
+type YAMLBookmarkRepository struct {
 	filePath string
 	mu       sync.RWMutex // Thread-safe operations
 }
 
 // yamlStorage represents the file structure
 type yamlStorage struct {
-	Examples []models.ToolExample `yaml:"examples"`
+	Bookmarks []models.Bookmark `yaml:"bookmarks"`
 }
 
-// NewYAMLExampleRepository creates a new YAML-based repository
-func NewYAMLExampleRepository(filePath string) (repository.ExampleRepository, error) {
+// NewYAMLBookmarkRepository creates a new YAML-based repository
+func NewYAMLBookmarkRepository(filePath string) (repository.BookmarkRepository, error) {
 	// Ensure directory exists
 	dir := filepath.Dir(filePath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create config directory: %w", err)
 	}
 
-	repo := &YAMLExampleRepository{
+	repo := &YAMLBookmarkRepository{
 		filePath: filePath,
 	}
 
 	// Initialize file if it doesn't exist
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		if err := repo.save(&yamlStorage{Examples: []models.ToolExample{}}); err != nil {
+		if err := repo.save(&yamlStorage{Bookmarks: []models.Bookmark{}}); err != nil {
 			return nil, err
 		}
 	}
@@ -54,7 +54,7 @@ func NewYAMLExampleRepository(filePath string) (repository.ExampleRepository, er
 }
 
 // load reads the YAML file and returns the storage structure
-func (r *YAMLExampleRepository) load() (*yamlStorage, error) {
+func (r *YAMLBookmarkRepository) load() (*yamlStorage, error) {
 	data, err := os.ReadFile(r.filePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read storage file: %w", err)
@@ -69,7 +69,7 @@ func (r *YAMLExampleRepository) load() (*yamlStorage, error) {
 }
 
 // save writes the storage structure to the YAML file
-func (r *YAMLExampleRepository) save(storage *yamlStorage) error {
+func (r *YAMLBookmarkRepository) save(storage *yamlStorage) error {
 	data, err := yaml.Marshal(storage)
 	if err != nil {
 		return fmt.Errorf("failed to marshal YAML: %w", err)
@@ -83,7 +83,7 @@ func (r *YAMLExampleRepository) save(storage *yamlStorage) error {
 }
 
 // Create adds a new example to storage
-func (r *YAMLExampleRepository) Create(ctx context.Context, example *models.ToolExample) error {
+func (r *YAMLBookmarkRepository) Create(ctx context.Context, example *models.Bookmark) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -93,18 +93,18 @@ func (r *YAMLExampleRepository) Create(ctx context.Context, example *models.Tool
 	}
 
 	// Check for duplicates (command is primary key)
-	for _, ex := range storage.Examples {
+	for _, ex := range storage.Bookmarks {
 		if ex.Command == example.Command {
-			return ErrExampleAlreadyExists
+			return ErrBookmarkAlreadyExists
 		}
 	}
 
-	storage.Examples = append(storage.Examples, *example)
+	storage.Bookmarks = append(storage.Bookmarks, *example)
 	return r.save(storage)
 }
 
 // GetByCommand retrieves an example by its command
-func (r *YAMLExampleRepository) GetByCommand(ctx context.Context, command string) (*models.ToolExample, error) {
+func (r *YAMLBookmarkRepository) GetByCommand(ctx context.Context, command string) (*models.Bookmark, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -113,17 +113,17 @@ func (r *YAMLExampleRepository) GetByCommand(ctx context.Context, command string
 		return nil, err
 	}
 
-	for _, ex := range storage.Examples {
+	for _, ex := range storage.Bookmarks {
 		if ex.Command == command {
 			return &ex, nil
 		}
 	}
 
-	return nil, ErrExampleNotFound
+	return nil, ErrBookmarkNotFound
 }
 
 // List retrieves all examples
-func (r *YAMLExampleRepository) List(ctx context.Context) ([]*models.ToolExample, error) {
+func (r *YAMLBookmarkRepository) List(ctx context.Context) ([]*models.Bookmark, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -132,16 +132,16 @@ func (r *YAMLExampleRepository) List(ctx context.Context) ([]*models.ToolExample
 		return nil, err
 	}
 
-	examples := make([]*models.ToolExample, len(storage.Examples))
-	for i := range storage.Examples {
-		examples[i] = &storage.Examples[i]
+	examples := make([]*models.Bookmark, len(storage.Bookmarks))
+	for i := range storage.Bookmarks {
+		examples[i] = &storage.Bookmarks[i]
 	}
 
 	return examples, nil
 }
 
 // ListByToolName retrieves all examples for a specific tool name
-func (r *YAMLExampleRepository) ListByToolName(ctx context.Context, toolName string) ([]*models.ToolExample, error) {
+func (r *YAMLBookmarkRepository) ListByToolName(ctx context.Context, toolName string) ([]*models.Bookmark, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -150,10 +150,10 @@ func (r *YAMLExampleRepository) ListByToolName(ctx context.Context, toolName str
 		return nil, err
 	}
 
-	var examples []*models.ToolExample
-	for i := range storage.Examples {
-		if storage.Examples[i].ToolName == toolName {
-			examples = append(examples, &storage.Examples[i])
+	var examples []*models.Bookmark
+	for i := range storage.Bookmarks {
+		if storage.Bookmarks[i].ToolName == toolName {
+			examples = append(examples, &storage.Bookmarks[i])
 		}
 	}
 
@@ -161,7 +161,7 @@ func (r *YAMLExampleRepository) ListByToolName(ctx context.Context, toolName str
 }
 
 // Update modifies an existing example
-func (r *YAMLExampleRepository) Update(ctx context.Context, example *models.ToolExample) error {
+func (r *YAMLBookmarkRepository) Update(ctx context.Context, example *models.Bookmark) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -170,18 +170,18 @@ func (r *YAMLExampleRepository) Update(ctx context.Context, example *models.Tool
 		return err
 	}
 
-	for i, ex := range storage.Examples {
+	for i, ex := range storage.Bookmarks {
 		if ex.Command == example.Command {
-			storage.Examples[i] = *example
+			storage.Bookmarks[i] = *example
 			return r.save(storage)
 		}
 	}
 
-	return ErrExampleNotFound
+	return ErrBookmarkNotFound
 }
 
 // Delete removes an example by command
-func (r *YAMLExampleRepository) Delete(ctx context.Context, command string) error {
+func (r *YAMLBookmarkRepository) Delete(ctx context.Context, command string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -190,18 +190,18 @@ func (r *YAMLExampleRepository) Delete(ctx context.Context, command string) erro
 		return err
 	}
 
-	for i, ex := range storage.Examples {
+	for i, ex := range storage.Bookmarks {
 		if ex.Command == command {
-			storage.Examples = append(storage.Examples[:i], storage.Examples[i+1:]...)
+			storage.Bookmarks = append(storage.Bookmarks[:i], storage.Bookmarks[i+1:]...)
 			return r.save(storage)
 		}
 	}
 
-	return ErrExampleNotFound
+	return ErrBookmarkNotFound
 }
 
 // DeleteByToolName removes all examples for a tool name
-func (r *YAMLExampleRepository) DeleteByToolName(ctx context.Context, toolName string) error {
+func (r *YAMLBookmarkRepository) DeleteByToolName(ctx context.Context, toolName string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -211,9 +211,9 @@ func (r *YAMLExampleRepository) DeleteByToolName(ctx context.Context, toolName s
 	}
 
 	// Filter out examples matching the tool name
-	filtered := []models.ToolExample{}
+	filtered := []models.Bookmark{}
 	found := false
-	for _, ex := range storage.Examples {
+	for _, ex := range storage.Bookmarks {
 		if ex.ToolName != toolName {
 			filtered = append(filtered, ex)
 		} else {
@@ -222,15 +222,15 @@ func (r *YAMLExampleRepository) DeleteByToolName(ctx context.Context, toolName s
 	}
 
 	if !found {
-		return ErrExampleNotFound
+		return ErrBookmarkNotFound
 	}
 
-	storage.Examples = filtered
+	storage.Bookmarks = filtered
 	return r.save(storage)
 }
 
 // Exists checks if an example with the given command exists
-func (r *YAMLExampleRepository) Exists(ctx context.Context, command string) (bool, error) {
+func (r *YAMLBookmarkRepository) Exists(ctx context.Context, command string) (bool, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -239,7 +239,7 @@ func (r *YAMLExampleRepository) Exists(ctx context.Context, command string) (boo
 		return false, err
 	}
 
-	for _, ex := range storage.Examples {
+	for _, ex := range storage.Bookmarks {
 		if ex.Command == command {
 			return true, nil
 		}

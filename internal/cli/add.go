@@ -26,18 +26,18 @@ Each example requires:
 - Description: What it does (e.g., "list all ports at port 54321")
 - Command: The actual command (e.g., "lsof -i :54321")`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			req := dto.CreateExampleRequest{
+			req := dto.CreateBookmarkRequest{
 				Command:     addExampleCmd,
 				ToolName:    addToolName,
 				Description: addDesc,
 			}
 
-			resp, err := svc.CreateExample(context.Background(), req)
+			resp, err := svc.CreateBookmark(context.Background(), req)
 			if err != nil {
 				return fmt.Errorf("failed to add example: %w", err)
 			}
 
-			fmt.Printf("Successfully added command for tool: %s\n", resp.ToolName)
+			fmt.Printf("Successfully added command: %s for tool: %s\n", resp.Command, resp.ToolName)
 			return nil
 		},
 	}

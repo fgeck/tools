@@ -22,13 +22,13 @@ func run() error {
 	cfg := config.DefaultConfig()
 
 	// Initialize repository
-	repo, err := yaml.NewYAMLExampleRepository(cfg.StorageFilePath)
+	repo, err := yaml.NewYAMLBookmarkRepository(cfg.StorageFilePath)
 	if err != nil {
 		return fmt.Errorf("failed to initialize repository: %w", err)
 	}
 
 	// Initialize service
-	svc := service.NewExampleService(repo)
+	svc := service.NewBookmarkService(repo)
 
 	// Initialize and execute CLI
 	cli.Initialize(svc)

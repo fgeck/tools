@@ -6,24 +6,24 @@ import (
 	"github.com/fgeck/tools/internal/domain/models"
 )
 
-// ExampleRepository defines the interface for example persistence
+// BookmarkRepository defines the interface for example persistence
 // Command is the primary key for all operations
-type ExampleRepository interface {
+type BookmarkRepository interface {
 	// Create adds a new example to storage
 	// Returns error if command already exists
-	Create(ctx context.Context, example *models.ToolExample) error
+	Create(ctx context.Context, example *models.Bookmark) error
 
 	// GetByCommand retrieves an example by its command (primary key)
-	GetByCommand(ctx context.Context, command string) (*models.ToolExample, error)
+	GetByCommand(ctx context.Context, command string) (*models.Bookmark, error)
 
 	// List retrieves all examples
-	List(ctx context.Context) ([]*models.ToolExample, error)
+	List(ctx context.Context) ([]*models.Bookmark, error)
 
 	// ListByToolName retrieves all examples for a specific tool name
-	ListByToolName(ctx context.Context, toolName string) ([]*models.ToolExample, error)
+	ListByToolName(ctx context.Context, toolName string) ([]*models.Bookmark, error)
 
 	// Update modifies an existing example (identified by command)
-	Update(ctx context.Context, example *models.ToolExample) error
+	Update(ctx context.Context, example *models.Bookmark) error
 
 	// Delete removes an example by command (primary key)
 	Delete(ctx context.Context, command string) error

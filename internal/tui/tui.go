@@ -40,7 +40,7 @@ const (
 type model struct {
 	table       table.Model
 	tableRows   []tableRow
-	service     service.ExampleService
+	service     service.BookmarkService
 	mode        mode
 	err         error
 	quitting    bool
@@ -57,26 +57,26 @@ type model struct {
 	originalCmd string // Original command being edited
 }
 
-type examplesLoadedMsg struct {
-	examples []dto.ExampleResponse
+type bookmarksLoadedMsg struct {
+	examples []dto.BookmarkResponse
 }
 
 type errorMsg struct {
 	err error
 }
 
-func loadExamples(svc service.ExampleService) tea.Cmd {
+func loadBookmarks(svc service.BookmarkService) tea.Cmd {
 	return func() tea.Msg {
 		ctx := context.Background()
-		resp, err := svc.ListExamples(ctx)
+		resp, err := svc.ListBookmarks(ctx)
 		if err != nil {
 			return errorMsg{err}
 		}
-		return examplesLoadedMsg{examples: resp.Examples}
+		return bookmarksLoadedMsg{examples: resp.Examples}
 	}
 }
 
-func NewModel(svc service.ExampleService) model {
+func NewModel(svc service.BookmarkService) model {
 	columns := []table.Column{
 		{Title: "Tool", Width: 15},
 		{Title: "Description", Width: 40},
@@ -102,10 +102,15 @@ func NewModel(svc service.ExampleService) model {
 		Bold(false)
 	t.SetStyles(s)
 
-	// Initialize text inputs for add mode
+	// Initialize text inputs for add mode - order: Command, Tool Name, Description
+	cmdInput := textinput.New()
+	cmdInput.Placeholder = "Command (e.g., lsof -i :54321)"
+	cmdInput.Focus()
+	cmdInput.CharLimit = 200
+	cmdInput.Width = 50
+
 	toolNameInput := textinput.New()
 	toolNameInput.Placeholder = "Tool name (e.g., lsof)"
-	toolNameInput.Focus()
 	toolNameInput.CharLimit = 50
 	toolNameInput.Width = 50
 
@@ -114,11 +119,6 @@ func NewModel(svc service.ExampleService) model {
 	descInput.CharLimit = 200
 	descInput.Width = 50
 
-	cmdInput := textinput.New()
-	cmdInput.Placeholder = "Command (e.g., lsof -i :54321)"
-	cmdInput.CharLimit = 200
-	cmdInput.Width = 50
-
 	m := model{
 		table:         t,
 		service:       svc,
@@ -126,14 +126,14 @@ func NewModel(svc service.ExampleService) model {
 		toolNameInput: toolNameInput,
 		descInput:     descInput,
 		cmdInput:      cmdInput,
-		inputs:        []textinput.Model{toolNameInput, descInput, cmdInput},
+		inputs:        []textinput.Model{cmdInput, toolNameInput, descInput},
 	}
 
 	return m
 }
 
 func (m model) Init() tea.Cmd {
-	return tea.Batch(loadExamples(m.service), textinput.Blink)
+	return tea.Batch(loadBookmarks(m.service), textinput.Blink)
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -145,7 +145,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.table.SetWidth(msg.Width)
 		return m, nil
 
-	case examplesLoadedMsg:
+	case bookmarksLoadedMsg:
 		rows := []table.Row{}
 		m.tableRows = []tableRow{}
 		for _, example := range msg.examples {
@@ -207,10 +207,10 @@ func (m model) handleListKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				row := m.tableRows[cursor]
 				m.mode = modeEdit
 				m.originalCmd = row.command
-				// Pre-fill inputs with current values
-				m.inputs[0].SetValue(row.toolName)
-				m.inputs[1].SetValue(row.description)
-				m.inputs[2].SetValue(row.command)
+				// Pre-fill inputs with current values - order: Command, Tool Name, Description
+				m.inputs[0].SetValue(row.command)
+				m.inputs[1].SetValue(row.toolName)
+				m.inputs[2].SetValue(row.description)
 				m.focusIndex = 0
 				m.inputs[0].Focus()
 				return m, textinput.Blink
@@ -348,10 +348,10 @@ func (m *model) updateInputs(msg tea.KeyMsg) tea.Cmd {
 		m.inputs[i], cmds[i] = m.inputs[i].Update(msg)
 	}
 
-	// Sync back to individual fields
-	m.toolNameInput = m.inputs[0]
-	m.descInput = m.inputs[1]
-	m.cmdInput = m.inputs[2]
+	// Sync back to individual fields - order: Command, Tool Name, Description
+	m.cmdInput = m.inputs[0]
+	m.toolNameInput = m.inputs[1]
+	m.descInput = m.inputs[2]
 
 	return tea.Batch(cmds...)
 }
@@ -376,14 +376,14 @@ func (m model) submitAdd() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	req := dto.CreateExampleRequest{
+	req := dto.CreateBookmarkRequest{
 		Command:     cmd,
 		ToolName:    toolName,
 		Description: desc,
 	}
 
 	ctx := context.Background()
-	_, err := m.service.CreateExample(ctx, req)
+	_, err := m.service.CreateBookmark(ctx, req)
 	if err != nil {
 		m.err = err
 		return m, nil
@@ -392,7 +392,7 @@ func (m model) submitAdd() (tea.Model, tea.Cmd) {
 	m.mode = modeList
 	m.resetInputs()
 	m.err = nil
-	return m, loadExamples(m.service)
+	return m, loadBookmarks(m.service)
 }
 
 func (m model) submitEdit() (tea.Model, tea.Cmd) {
@@ -405,7 +405,7 @@ func (m model) submitEdit() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	req := dto.UpdateExampleRequest{
+	req := dto.UpdateBookmarkRequest{
 		Command:        m.originalCmd,
 		NewToolName:    toolName,
 		NewDescription: desc,
@@ -413,7 +413,7 @@ func (m model) submitEdit() (tea.Model, tea.Cmd) {
 	}
 
 	ctx := context.Background()
-	_, err := m.service.UpdateExample(ctx, req)
+	_, err := m.service.UpdateBookmark(ctx, req)
 	if err != nil {
 		m.err = err
 		return m, nil
@@ -422,7 +422,7 @@ func (m model) submitEdit() (tea.Model, tea.Cmd) {
 	m.mode = modeList
 	m.resetInputs()
 	m.err = nil
-	return m, loadExamples(m.service)
+	return m, loadBookmarks(m.service)
 }
 
 func (m model) submitDelete() (tea.Model, tea.Cmd) {
@@ -434,7 +434,7 @@ func (m model) submitDelete() (tea.Model, tea.Cmd) {
 	row := m.tableRows[cursor]
 	ctx := context.Background()
 	// Delete the specific example by its command (primary key)
-	err := m.service.DeleteExample(ctx, row.command)
+	err := m.service.DeleteBookmark(ctx, row.command)
 	if err != nil {
 		m.err = err
 		m.mode = modeList
@@ -443,7 +443,7 @@ func (m model) submitDelete() (tea.Model, tea.Cmd) {
 
 	m.mode = modeList
 	m.err = nil
-	return m, loadExamples(m.service)
+	return m, loadBookmarks(m.service)
 }
 
 func (m model) View() string {
@@ -489,17 +489,18 @@ func (m model) addView() string {
 	b.WriteString(titleStyle.Render("Add New Example"))
 	b.WriteString("\n\n")
 
-	b.WriteString(itemStyle.Render("Tool Name:"))
+	// Order: Command, Tool Name, Description
+	b.WriteString(itemStyle.Render("Command:"))
 	b.WriteString("\n")
 	b.WriteString(itemStyle.Render(m.inputs[0].View()))
 	b.WriteString("\n\n")
 
-	b.WriteString(itemStyle.Render("Description:"))
+	b.WriteString(itemStyle.Render("Tool Name:"))
 	b.WriteString("\n")
 	b.WriteString(itemStyle.Render(m.inputs[1].View()))
 	b.WriteString("\n\n")
 
-	b.WriteString(itemStyle.Render("Command:"))
+	b.WriteString(itemStyle.Render("Description:"))
 	b.WriteString("\n")
 	b.WriteString(itemStyle.Render(m.inputs[2].View()))
 	b.WriteString("\n\n")
@@ -521,17 +522,18 @@ func (m model) editView() string {
 	b.WriteString(titleStyle.Render("Edit Example"))
 	b.WriteString("\n\n")
 
-	b.WriteString(itemStyle.Render("Tool Name:"))
+	// Order: Command, Tool Name, Description
+	b.WriteString(itemStyle.Render("Command:"))
 	b.WriteString("\n")
 	b.WriteString(itemStyle.Render(m.inputs[0].View()))
 	b.WriteString("\n\n")
 
-	b.WriteString(itemStyle.Render("Description:"))
+	b.WriteString(itemStyle.Render("Tool Name:"))
 	b.WriteString("\n")
 	b.WriteString(itemStyle.Render(m.inputs[1].View()))
 	b.WriteString("\n\n")
 
-	b.WriteString(itemStyle.Render("Command:"))
+	b.WriteString(itemStyle.Render("Description:"))
 	b.WriteString("\n")
 	b.WriteString(itemStyle.Render(m.inputs[2].View()))
 	b.WriteString("\n\n")
@@ -566,7 +568,7 @@ func (m model) deleteView() string {
 	return b.String()
 }
 
-func Run(svc service.ExampleService) error {
+func Run(svc service.BookmarkService) error {
 	m := NewModel(svc)
 	p := tea.NewProgram(m, tea.WithAltScreen())
 	finalModel, err := p.Run()
@@ -579,8 +581,9 @@ func Run(svc service.ExampleService) error {
 		// Copy to clipboard using OSC 52 escape sequence
 		copyToClipboard(fm.selectedCmd)
 
-		// Print the command to stdout
-		fmt.Println(fm.selectedCmd)
+		// Print success message in green
+		greenStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("35")).Bold(true)
+		fmt.Println(greenStyle.Render(fmt.Sprintf("Copied command '%s' to your clipboard", fm.selectedCmd)))
 	}
 
 	return nil

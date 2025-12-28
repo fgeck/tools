@@ -5,11 +5,15 @@ A command-line bookmark manager for terminal commands. Store and retrieve CLI co
 ## Features
 
 - **Interactive TUI** for browsing and selecting commands
-- **Add, edit, list, and remove** command examples
-- **Multiple examples per tool** - group related commands by tool name
+- **Add, edit, list, and remove** command bookmarks
+- **Multiple bookmarks per tool** - group related commands by tool name
 - **Auto-copy to clipboard** when selecting in TUI
 - **YAML-based storage** following XDG Base Directory specification
 - **Clean architecture** - easy to extend with database backends or REST API
+
+## Demo
+
+![Demo](demos/demo.gif)
 
 ## Installation
 
@@ -56,20 +60,20 @@ tools
 ```
 
 **Keyboard shortcuts:**
-- `↑/↓` - Navigate examples
+- `↑/↓` - Navigate bookmarks
 - `Enter` - Select command (copies to clipboard and prints to stdout)
-- `a` - Add new example
-- `e` - Edit selected example
-- `d` - Delete selected example
+- `a` - Add new bookmark
+- `e` - Edit selected bookmark
+- `d` - Delete selected bookmark
 - `q/Esc` - Quit
 
-When you select an example with Enter, the command is:
+When you select a bookmark with Enter, the command is:
 1. Copied to clipboard using OSC 52 (supported by most modern terminals)
 2. Printed to stdout
 
 ### CLI Commands
 
-#### Add Example
+#### Add Bookmark
 
 ```bash
 tools add -n <tool-name> -c <command> -d <description>
@@ -80,7 +84,7 @@ Example:
 tools add -n lsof -c "lsof -i :8080" -d "check port 8080"
 ```
 
-#### List Examples
+#### List Bookmarks
 
 ```bash
 tools list --cli
@@ -88,7 +92,7 @@ tools list --cli
 tools --cli
 ```
 
-#### Edit Example
+#### Edit Bookmark
 
 Edit by specifying the command (primary key) and the fields to update:
 
@@ -108,24 +112,24 @@ tools edit -c "lsof -i :8080" -n "lsof -t -i :8080"
 tools edit -c "lsof -i :8080" -t "lsof" -d "new description" -n "new command"
 ```
 
-#### Remove Example(s)
+#### Remove Bookmark(s)
 
-Remove specific example by command:
+Remove specific bookmark by command:
 ```bash
 tools rm -c <command>
 ```
 
-Remove all examples for a tool:
+Remove all bookmarks for a tool:
 ```bash
 tools rm -n <tool-name>
 ```
 
 Examples:
 ```bash
-# Remove specific example
+# Remove specific bookmark
 tools rm -c "lsof -i :8080"
 
-# Remove all lsof examples
+# Remove all lsof bookmarks
 tools rm -n lsof
 ```
 
@@ -145,7 +149,7 @@ tools <command> --help
 
 ## Storage
 
-Examples are stored in `~/.config/tools/tools.yaml` by default.
+Bookmarks are stored in `~/.config/tools/tools.yaml` by default.
 
 The location follows XDG Base Directory specification and can be overridden with `XDG_CONFIG_HOME`:
 
@@ -156,7 +160,7 @@ export XDG_CONFIG_HOME=/custom/path
 ## Example Workflow
 
 ```bash
-# Add some examples
+# Add some bookmarks
 tools add -n kubectl -c "kubectl get pods" -d "list all pods"
 tools add -n kubectl -c "kubectl get nodes" -d "list all nodes"
 tools add -n docker -c "docker ps -a" -d "list all containers"
@@ -168,13 +172,13 @@ tools
 # List in CLI
 tools list --cli
 
-# Edit an example
+# Edit a bookmark
 tools edit -c "docker ps -a" -d "list all containers including stopped"
 
-# Remove specific example
+# Remove specific bookmark
 tools rm -c "kubectl get nodes"
 
-# Remove all kubectl examples
+# Remove all kubectl bookmarks
 tools rm -n kubectl
 ```
 
@@ -227,7 +231,7 @@ The project follows Clean Architecture principles:
 internal/
 ├── cli/           # CLI commands (Cobra)
 ├── config/        # Configuration management
-├── domain/models/ # Domain entities (ToolExample)
+├── domain/models/ # Domain entities (Bookmark)
 ├── dto/           # Data transfer objects
 ├── repository/    # Data access layer (interface + YAML impl)
 ├── service/       # Business logic
@@ -238,7 +242,7 @@ internal/
 - **Repository pattern** - Storage abstraction (easy to swap YAML → PostgreSQL)
 - **Service layer** - Business logic (reusable for REST API)
 - **Command as primary key** - Each command string is unique
-- **Tool name for grouping** - Multiple examples per tool
+- **Tool name for grouping** - Multiple bookmarks per tool
 
 ## License
 

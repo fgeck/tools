@@ -12,13 +12,13 @@ import (
 )
 
 var (
-	svc     service.ExampleService
+	svc     service.BookmarkService
 	rootCmd *cobra.Command
 	useCLI  bool
 )
 
 // Initialize sets up the CLI with the provided service
-func Initialize(exampleService service.ExampleService) {
+func Initialize(exampleService service.BookmarkService) {
 	svc = exampleService
 
 	rootCmd = &cobra.Command{
@@ -55,7 +55,7 @@ func Execute() {
 
 // listExamples is a shared function for displaying examples in table format
 func listExamples() error {
-	resp, err := svc.ListExamples(context.Background())
+	resp, err := svc.ListBookmarks(context.Background())
 	if err != nil {
 		return fmt.Errorf("failed to list examples: %w", err)
 	}

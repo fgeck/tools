@@ -96,4 +96,10 @@ install-hooks: ## Install Git pre-commit hook
 	@echo "✅ Pre-commit hook installed successfully!"
 	@echo "To skip the hook, use: git commit --no-verify"
 
+demo: build ## Generate demo GIF using VHS
+	@echo "Generating demo GIF..."
+	@command -v vhs >/dev/null 2>&1 || { echo "Error: VHS not installed. Run: brew install vhs"; exit 1; }
+	@vhs demos/demo.tape
+	@echo "✅ Demo generated: demos/demo.gif"
+
 all: clean deps pre-commit test build ## Run all checks and build

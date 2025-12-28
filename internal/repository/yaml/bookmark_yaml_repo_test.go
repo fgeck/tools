@@ -5,19 +5,19 @@ package yaml
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/fgeck/tools/internal/domain/models"
 )
 
-func TestNewYAMLExampleRepository(t *testing.T) {
+func TestNewYAMLBookmarkRepository(t *testing.T) {
 	tmpDir := t.TempDir()
 	filePath := filepath.Join(tmpDir, "tools.yaml")
 
-	repo, err := NewYAMLExampleRepository(filePath)
+	repo, err := NewYAMLBookmarkRepository(filePath)
 	if err != nil {
 		t.Fatalf("Failed to create repository: %v", err)
 	}
@@ -32,18 +32,16 @@ func TestNewYAMLExampleRepository(t *testing.T) {
 	}
 }
 
-func TestCreateExample(t *testing.T) {
+func TestCreateBookmark(t *testing.T) {
 	tmpDir := t.TempDir()
 	filePath := filepath.Join(tmpDir, "tools.yaml")
-	repo, _ := NewYAMLExampleRepository(filePath)
+	repo, _ := NewYAMLBookmarkRepository(filePath)
 
 	ctx := context.Background()
-	example := &models.ToolExample{
+	example := &models.Bookmark{
 		Command:     "kubectl get pods",
 		ToolName:    "kubectl",
 		Description: "list all pods",
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
 	}
 
 	err := repo.Create(ctx, example)
@@ -69,15 +67,13 @@ func TestCreateExample(t *testing.T) {
 func TestCreateDuplicateCommand(t *testing.T) {
 	tmpDir := t.TempDir()
 	filePath := filepath.Join(tmpDir, "tools.yaml")
-	repo, _ := NewYAMLExampleRepository(filePath)
+	repo, _ := NewYAMLBookmarkRepository(filePath)
 
 	ctx := context.Background()
-	example := &models.ToolExample{
+	example := &models.Bookmark{
 		Command:     "lsof -i :8080",
 		ToolName:    "lsof",
 		Description: "check port 8080",
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
 	}
 
 	// Create first time should succeed
@@ -86,31 +82,27 @@ func TestCreateDuplicateCommand(t *testing.T) {
 	}
 
 	// Create duplicate command should fail
-	example2 := &models.ToolExample{
+	example2 := &models.Bookmark{
 		Command:     "lsof -i :8080", // Same command (primary key)
 		ToolName:    "lsof",
 		Description: "different description",
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
 	}
 	err := repo.Create(ctx, example2)
-	if err != ErrExampleAlreadyExists {
-		t.Errorf("Expected ErrExampleAlreadyExists, got %v", err)
+	if err != ErrBookmarkAlreadyExists {
+		t.Errorf("Expected ErrBookmarkAlreadyExists, got %v", err)
 	}
 }
 
 func TestGetByCommand(t *testing.T) {
 	tmpDir := t.TempDir()
 	filePath := filepath.Join(tmpDir, "tools.yaml")
-	repo, _ := NewYAMLExampleRepository(filePath)
+	repo, _ := NewYAMLBookmarkRepository(filePath)
 
 	ctx := context.Background()
-	example := &models.ToolExample{
+	example := &models.Bookmark{
 		Command:     "docker ps -a",
 		ToolName:    "docker",
 		Description: "list all containers",
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
 	}
 
 	repo.Create(ctx, example)
@@ -128,44 +120,38 @@ func TestGetByCommand(t *testing.T) {
 func TestGetByCommandNotFound(t *testing.T) {
 	tmpDir := t.TempDir()
 	filePath := filepath.Join(tmpDir, "tools.yaml")
-	repo, _ := NewYAMLExampleRepository(filePath)
+	repo, _ := NewYAMLBookmarkRepository(filePath)
 
 	ctx := context.Background()
 	_, err := repo.GetByCommand(ctx, "nonexistent command")
-	if err != ErrExampleNotFound {
-		t.Errorf("Expected ErrExampleNotFound, got %v", err)
+	if err != ErrBookmarkNotFound {
+		t.Errorf("Expected ErrBookmarkNotFound, got %v", err)
 	}
 }
 
 func TestList(t *testing.T) {
 	tmpDir := t.TempDir()
 	filePath := filepath.Join(tmpDir, "tools.yaml")
-	repo, _ := NewYAMLExampleRepository(filePath)
+	repo, _ := NewYAMLBookmarkRepository(filePath)
 
 	ctx := context.Background()
 
 	// Create multiple examples
-	examples := []*models.ToolExample{
+	examples := []*models.Bookmark{
 		{
 			Command:     "kubectl get pods",
 			ToolName:    "kubectl",
 			Description: "list pods",
-			CreatedAt:   time.Now(),
-			UpdatedAt:   time.Now(),
 		},
 		{
 			Command:     "kubectl get nodes",
 			ToolName:    "kubectl",
 			Description: "list nodes",
-			CreatedAt:   time.Now(),
-			UpdatedAt:   time.Now(),
 		},
 		{
 			Command:     "docker ps",
 			ToolName:    "docker",
 			Description: "list containers",
-			CreatedAt:   time.Now(),
-			UpdatedAt:   time.Now(),
 		},
 	}
 
@@ -189,32 +175,26 @@ func TestList(t *testing.T) {
 func TestListByToolName(t *testing.T) {
 	tmpDir := t.TempDir()
 	filePath := filepath.Join(tmpDir, "tools.yaml")
-	repo, _ := NewYAMLExampleRepository(filePath)
+	repo, _ := NewYAMLBookmarkRepository(filePath)
 
 	ctx := context.Background()
 
 	// Create examples for different tools
-	examples := []*models.ToolExample{
+	examples := []*models.Bookmark{
 		{
 			Command:     "kubectl get pods",
 			ToolName:    "kubectl",
 			Description: "list pods",
-			CreatedAt:   time.Now(),
-			UpdatedAt:   time.Now(),
 		},
 		{
 			Command:     "kubectl get nodes",
 			ToolName:    "kubectl",
 			Description: "list nodes",
-			CreatedAt:   time.Now(),
-			UpdatedAt:   time.Now(),
 		},
 		{
 			Command:     "docker ps",
 			ToolName:    "docker",
 			Description: "list containers",
-			CreatedAt:   time.Now(),
-			UpdatedAt:   time.Now(),
 		},
 	}
 
@@ -242,22 +222,19 @@ func TestListByToolName(t *testing.T) {
 func TestUpdate(t *testing.T) {
 	tmpDir := t.TempDir()
 	filePath := filepath.Join(tmpDir, "tools.yaml")
-	repo, _ := NewYAMLExampleRepository(filePath)
+	repo, _ := NewYAMLBookmarkRepository(filePath)
 
 	ctx := context.Background()
-	example := &models.ToolExample{
+	example := &models.Bookmark{
 		Command:     "kubectl get pods",
 		ToolName:    "kubectl",
 		Description: "old description",
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
 	}
 
 	repo.Create(ctx, example)
 
 	// Update the example
 	example.Description = "new description"
-	example.UpdatedAt = time.Now()
 
 	err := repo.Update(ctx, example)
 	if err != nil {
@@ -274,15 +251,13 @@ func TestUpdate(t *testing.T) {
 func TestDelete(t *testing.T) {
 	tmpDir := t.TempDir()
 	filePath := filepath.Join(tmpDir, "tools.yaml")
-	repo, _ := NewYAMLExampleRepository(filePath)
+	repo, _ := NewYAMLBookmarkRepository(filePath)
 
 	ctx := context.Background()
-	example := &models.ToolExample{
+	example := &models.Bookmark{
 		Command:     "kubectl get pods",
 		ToolName:    "kubectl",
 		Description: "list pods",
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
 	}
 
 	repo.Create(ctx, example)
@@ -295,40 +270,34 @@ func TestDelete(t *testing.T) {
 
 	// Verify it's gone
 	_, err = repo.GetByCommand(ctx, example.Command)
-	if err != ErrExampleNotFound {
-		t.Errorf("Expected ErrExampleNotFound after delete, got %v", err)
+	if err != ErrBookmarkNotFound {
+		t.Errorf("Expected ErrBookmarkNotFound after delete, got %v", err)
 	}
 }
 
 func TestDeleteByToolName(t *testing.T) {
 	tmpDir := t.TempDir()
 	filePath := filepath.Join(tmpDir, "tools.yaml")
-	repo, _ := NewYAMLExampleRepository(filePath)
+	repo, _ := NewYAMLBookmarkRepository(filePath)
 
 	ctx := context.Background()
 
 	// Create multiple examples for same tool
-	examples := []*models.ToolExample{
+	examples := []*models.Bookmark{
 		{
 			Command:     "kubectl get pods",
 			ToolName:    "kubectl",
 			Description: "list pods",
-			CreatedAt:   time.Now(),
-			UpdatedAt:   time.Now(),
 		},
 		{
 			Command:     "kubectl get nodes",
 			ToolName:    "kubectl",
 			Description: "list nodes",
-			CreatedAt:   time.Now(),
-			UpdatedAt:   time.Now(),
 		},
 		{
 			Command:     "docker ps",
 			ToolName:    "docker",
 			Description: "list containers",
-			CreatedAt:   time.Now(),
-			UpdatedAt:   time.Now(),
 		},
 	}
 
@@ -356,15 +325,13 @@ func TestDeleteByToolName(t *testing.T) {
 func TestExists(t *testing.T) {
 	tmpDir := t.TempDir()
 	filePath := filepath.Join(tmpDir, "tools.yaml")
-	repo, _ := NewYAMLExampleRepository(filePath)
+	repo, _ := NewYAMLBookmarkRepository(filePath)
 
 	ctx := context.Background()
-	example := &models.ToolExample{
+	example := &models.Bookmark{
 		Command:     "kubectl get pods",
 		ToolName:    "kubectl",
 		Description: "list pods",
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
 	}
 
 	// Should not exist initially
@@ -386,5 +353,221 @@ func TestExists(t *testing.T) {
 	}
 	if !exists {
 		t.Error("Example should exist after creation")
+	}
+}
+
+// Additional tests to improve coverage
+
+func TestConcurrentAccess(t *testing.T) {
+	tmpDir := t.TempDir()
+	filePath := filepath.Join(tmpDir, "tools.yaml")
+	repo, _ := NewYAMLBookmarkRepository(filePath)
+
+	ctx := context.Background()
+
+	// Test concurrent writes
+	done := make(chan bool)
+	for i := 0; i < 10; i++ {
+		go func(n int) {
+			example := &models.Bookmark{
+				Command:     fmt.Sprintf("command-%d", n),
+				ToolName:    "test",
+				Description: fmt.Sprintf("description-%d", n),
+			}
+			repo.Create(ctx, example)
+			done <- true
+		}(i)
+	}
+
+	// Wait for all goroutines
+	for i := 0; i < 10; i++ {
+		<-done
+	}
+
+	// Verify all were created
+	list, err := repo.List(ctx)
+	if err != nil {
+		t.Fatalf("Failed to list after concurrent writes: %v", err)
+	}
+
+	if len(list) != 10 {
+		t.Errorf("Expected 10 bookmarks, got %d", len(list))
+	}
+}
+
+func TestConcurrentReads(t *testing.T) {
+	tmpDir := t.TempDir()
+	filePath := filepath.Join(tmpDir, "tools.yaml")
+	repo, _ := NewYAMLBookmarkRepository(filePath)
+
+	ctx := context.Background()
+
+	// Create some data first
+	for i := 0; i < 5; i++ {
+		example := &models.Bookmark{
+			Command:     fmt.Sprintf("command-%d", i),
+			ToolName:    "test",
+			Description: fmt.Sprintf("description-%d", i),
+		}
+		repo.Create(ctx, example)
+	}
+
+	// Test concurrent reads
+	done := make(chan bool)
+	errors := make(chan error, 20)
+
+	for i := 0; i < 20; i++ {
+		go func() {
+			_, err := repo.List(ctx)
+			if err != nil {
+				errors <- err
+			}
+			done <- true
+		}()
+	}
+
+	// Wait for all goroutines
+	for i := 0; i < 20; i++ {
+		<-done
+	}
+
+	close(errors)
+	for err := range errors {
+		t.Errorf("Concurrent read error: %v", err)
+	}
+}
+
+func TestUpdateNonExistentBookmark(t *testing.T) {
+	tmpDir := t.TempDir()
+	filePath := filepath.Join(tmpDir, "tools.yaml")
+	repo, _ := NewYAMLBookmarkRepository(filePath)
+
+	ctx := context.Background()
+	example := &models.Bookmark{
+		Command:     "nonexistent",
+		ToolName:    "test",
+		Description: "test",
+	}
+
+	err := repo.Update(ctx, example)
+	if err == nil {
+		t.Error("Expected error when updating non-existent bookmark")
+	}
+}
+
+func TestDeleteByToolNameNoMatches(t *testing.T) {
+	tmpDir := t.TempDir()
+	filePath := filepath.Join(tmpDir, "tools.yaml")
+	repo, _ := NewYAMLBookmarkRepository(filePath)
+
+	ctx := context.Background()
+
+	// Create a bookmark with different tool name
+	example := &models.Bookmark{
+		Command:     "docker ps",
+		ToolName:    "docker",
+		Description: "list containers",
+	}
+	repo.Create(ctx, example)
+
+	// Try to delete bookmarks for different tool
+	err := repo.DeleteByToolName(ctx, "kubectl")
+	if err == nil {
+		t.Error("Expected error when deleting non-existent tool bookmarks")
+	}
+
+	// Verify docker bookmark still exists
+	list, _ := repo.ListByToolName(ctx, "docker")
+	if len(list) != 1 {
+		t.Errorf("Expected docker bookmark to still exist, got %d bookmarks", len(list))
+	}
+}
+
+func TestEmptyRepository(t *testing.T) {
+	tmpDir := t.TempDir()
+	filePath := filepath.Join(tmpDir, "tools.yaml")
+	repo, _ := NewYAMLBookmarkRepository(filePath)
+
+	ctx := context.Background()
+
+	// Test List on empty repository
+	list, err := repo.List(ctx)
+	if err != nil {
+		t.Fatalf("List failed on empty repository: %v", err)
+	}
+	if len(list) != 0 {
+		t.Errorf("Expected empty list, got %d bookmarks", len(list))
+	}
+
+	// Test ListByToolName on empty repository
+	list, err = repo.ListByToolName(ctx, "kubectl")
+	if err != nil {
+		t.Fatalf("ListByToolName failed on empty repository: %v", err)
+	}
+	if len(list) != 0 {
+		t.Errorf("Expected empty list, got %d bookmarks", len(list))
+	}
+
+	// Test Exists on empty repository
+	exists, err := repo.Exists(ctx, "nonexistent")
+	if err != nil {
+		t.Fatalf("Exists failed on empty repository: %v", err)
+	}
+	if exists {
+		t.Error("Expected bookmark to not exist in empty repository")
+	}
+}
+
+func TestCreateUpdateDeleteCycle(t *testing.T) {
+	tmpDir := t.TempDir()
+	filePath := filepath.Join(tmpDir, "tools.yaml")
+	repo, _ := NewYAMLBookmarkRepository(filePath)
+
+	ctx := context.Background()
+
+	// Create
+	example := &models.Bookmark{
+		Command:     "kubectl get pods",
+		ToolName:    "kubectl",
+		Description: "original description",
+	}
+
+	err := repo.Create(ctx, example)
+	if err != nil {
+		t.Fatalf("Create failed: %v", err)
+	}
+
+	// Update
+	example.Description = "updated description"
+	example.ToolName = "k8s"
+
+	err = repo.Update(ctx, example)
+	if err != nil {
+		t.Fatalf("Update failed: %v", err)
+	}
+
+	// Verify update
+	retrieved, err := repo.GetByCommand(ctx, "kubectl get pods")
+	if err != nil {
+		t.Fatalf("GetByCommand failed: %v", err)
+	}
+
+	if retrieved.Description != "updated description" {
+		t.Errorf("Expected description 'updated description', got %s", retrieved.Description)
+	}
+	if retrieved.ToolName != "k8s" {
+		t.Errorf("Expected tool name 'k8s', got %s", retrieved.ToolName)
+	}
+
+	// Delete
+	err = repo.Delete(ctx, "kubectl get pods")
+	if err != nil {
+		t.Fatalf("Delete failed: %v", err)
+	}
+
+	// Verify deletion
+	_, err = repo.GetByCommand(ctx, "kubectl get pods")
+	if err == nil {
+		t.Error("Expected error after deletion")
 	}
 }
