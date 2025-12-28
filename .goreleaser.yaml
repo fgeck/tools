@@ -60,8 +60,8 @@ brews:
       name: homebrew-tools
       token: "{{ .Env.GITHUB_TOKEN }}"
 
-    # Folder inside the repository
-    folder: Formula
+    # Directory inside the repository
+    directory: Formula
 
     homepage: "https://github.com/fgeck/tools"
     description: "A bookmark manager for your terminal commands"
