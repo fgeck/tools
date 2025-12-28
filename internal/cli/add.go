@@ -37,7 +37,7 @@ Each example requires:
 				return fmt.Errorf("failed to add example: %w", err)
 			}
 
-			fmt.Printf("Successfully added example for tool: %s\n", resp.ToolName)
+			fmt.Printf("Successfully added command for tool: %s\n", resp.ToolName)
 			return nil
 		},
 	}
