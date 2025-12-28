@@ -1,4 +1,4 @@
-.PHONY: help fmt lint build test unit-test integration-test clean install coverage
+.PHONY: help fmt lint build test unit-test integration-test clean install coverage pre-commit install-hooks
 
 # Default target
 .DEFAULT_GOAL := help
@@ -17,9 +17,17 @@ help: ## Display this help message
 	@echo "Available targets:"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
+tidy: ## Run go mod tidy
+	@echo "Running go mod tidy..."
+	@go mod tidy
+	@git diff --exit-code go.mod go.sum || (echo "go.mod or go.sum changed, please commit the changes" && exit 1)
+
 fmt: ## Run go fmt on all source files
 	@echo "Running go fmt..."
 	@go fmt ./...
+	@git diff --exit-code || (echo "Code not formatted, please commit the changes" && exit 1)
+
+vet: ## Run go vet
 	@echo "Running go vet..."
 	@go vet ./...
 
@@ -28,7 +36,10 @@ lint: ## Run golangci-lint
 	@which golangci-lint > /dev/null || (echo "golangci-lint not installed. Install from https://golangci-lint.run/usage/install/" && exit 1)
 	@golangci-lint run ./...
 
-build: fmt ## Build the binary
+pre-commit: tidy fmt vet lint ## Run all pre-commit checks (tidy, fmt, vet, lint)
+	@echo "✅ All pre-commit checks passed!"
+
+build: ## Build the binary
 	@echo "Building $(BINARY_NAME)..."
 	@go build $(LDFLAGS) -o $(BINARY_NAME) $(BINARY_PATH)
 	@echo "Binary created: $(BINARY_NAME)"
@@ -78,4 +89,11 @@ docker-run: docker-build ## Run the CLI in Docker
 run: build ## Build and run the binary
 	@./$(BINARY_NAME)
 
-all: clean deps fmt lint test build ## Run all checks and build
+install-hooks: ## Install Git pre-commit hook
+	@echo "Installing pre-commit hook..."
+	@chmod +x scripts/pre-commit.sh
+	@cp scripts/pre-commit.sh .git/hooks/pre-commit
+	@echo "✅ Pre-commit hook installed successfully!"
+	@echo "To skip the hook, use: git commit --no-verify"
+
+all: clean deps pre-commit test build ## Run all checks and build
