@@ -23,14 +23,14 @@ builds:
       - -X main.date={{.Date}}
 
 archives:
-  - name_template: >-
+  - id: default
+    name_template: >-
       {{ .ProjectName }}_
       {{- .Version }}_
       {{- .Os }}_
       {{- .Arch }}
     formats:
       - tar.gz
-      - zip
     format_overrides:
       - goos: windows
         formats:
@@ -62,7 +62,8 @@ dockers:
       - "ghcr.io/fgeck/tools:{{ .Major }}.{{ .Minor }}"
       - "ghcr.io/fgeck/tools:{{ .Major }}"
       - "ghcr.io/fgeck/tools:latest"
-    dockerfile: Dockerfile
+    dockerfile: Dockerfile.goreleaser
+    use: buildx
     build_flag_templates:
       - "--pull"
       - "--label=org.opencontainers.image.created={{.Date}}"
@@ -72,24 +73,27 @@ dockers:
       - "--label=org.opencontainers.image.source={{.GitURL}}"
     skip_push: auto
 
-# Homebrew formula
-brews:
-  - repository:
+# Homebrew cask (brews is deprecated)
+homebrew_casks:
+  - name: tools
+    repository:
       owner: fgeck
       name: homebrew-tools
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
 
-    # Directory inside the repository
-    directory: Formula
+    directory: Casks
 
     homepage: "https://github.com/fgeck/tools"
     description: "A bookmark manager for your terminal commands"
-    license: "MIT"
 
-    # Install script
-    install: |
-      bin.install "tools"
+    url:
+      verified: github.com/fgeck/tools
 
-    # Test the installation
-    test: |
-      system "#{bin}/tools", "--help"
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/tools"]
+          end
+
+    skip_upload: auto

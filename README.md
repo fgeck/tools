@@ -36,17 +36,26 @@ brew install tools
 
 ### Docker
 
-Build the image:
+Pull the latest image:
 
 ```bash
-docker build -t tools .
+docker pull ghcr.io/fgeck/tools:latest
 ```
 
 Run with a volume to persist data:
 
 ```bash
-docker run -v ~/.config/tools:/root/.config/tools tools list --cli
+docker run -v ~/.config/tools:/config ghcr.io/fgeck/tools:latest list --cli
 ```
+
+Or build locally:
+
+```bash
+docker build -t tools .
+docker run -v ~/.config/tools:/config tools list --cli
+```
+
+**Note**: The Docker image uses `scratch` for minimal size (~10MB). Config must be mounted to `/config`.
 
 ## Usage
 

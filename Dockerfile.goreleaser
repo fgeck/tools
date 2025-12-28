@@ -1,19 +1,4 @@
-# Dockerfile for regular Docker builds (main branch)
-# Build stage
-FROM golang:1.25-alpine AS builder
-
-WORKDIR /build
-
-# Copy go mod files
-COPY go.mod go.sum ./
-RUN go mod download
-
-# Copy source code
-COPY . .
-
-# Build the binary
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o tools ./cmd/tools
-
+# Dockerfile for GoReleaser (uses pre-built binary)
 # Get CA certificates
 FROM alpine:latest AS certs
 RUN apk --no-cache add ca-certificates
@@ -24,8 +9,8 @@ FROM scratch
 # Copy CA certificates for HTTPS support
 COPY --from=certs /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
-# Copy the binary from builder
-COPY --from=builder /build/tools /tools
+# Copy the pre-built binary from GoReleaser context
+COPY tools /tools
 
 # Set config directory as volume mount point
 # Users should mount: -v ~/.config/tools:/config
