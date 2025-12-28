@@ -52,6 +52,23 @@ changelog:
       - '^chore:'
       - '^build:'
 
+# Docker configuration
+dockers:
+  - image_templates:
+      - "ghcr.io/fgeck/tools:{{ .Version }}"
+      - "ghcr.io/fgeck/tools:{{ .Major }}.{{ .Minor }}"
+      - "ghcr.io/fgeck/tools:{{ .Major }}"
+      - "ghcr.io/fgeck/tools:latest"
+    dockerfile: Dockerfile
+    build_flag_templates:
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--label=org.opencontainers.image.source={{.GitURL}}"
+    skip_push: auto
+
 brews:
   - name: tools
     # You need to create a repository: github.com/fgeck/homebrew-tools
