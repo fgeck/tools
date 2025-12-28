@@ -1,6 +1,6 @@
-# tools
+# Tools
 
-A command-line bookmark manager for terminal commands. Store and retrieve CLI command examples with descriptions.
+A command-line bookmark manager. Store and retrieve CLI commands with descriptions grouped by their root command.
 
 ## Features
 
@@ -9,7 +9,6 @@ A command-line bookmark manager for terminal commands. Store and retrieve CLI co
 - **Multiple bookmarks per tool** - group related commands by tool name
 - **Auto-copy to clipboard** when selecting in TUI
 - **YAML-based storage** following XDG Base Directory specification
-- **Clean architecture** - easy to extend with database backends or REST API
 
 ## Demo
 
