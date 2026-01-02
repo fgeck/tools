@@ -495,3 +495,110 @@ func TestCLIMultipleExamplesForSameTool(t *testing.T) {
 		t.Errorf("Expected 2 examples after deletion, got %d", resp.Count)
 	}
 }
+
+func TestCLIListCommandWithWrapping(t *testing.T) {
+	_, cleanup := setupTestCLI(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	// Add example with long description and command that will require wrapping
+	_, err := svc.CreateBookmark(ctx, dto.CreateBookmarkRequest{
+		Command:     "kubectl get pods --all-namespaces -o wide --show-labels --field-selector=status.phase=Running",
+		ToolName:    "kubectl",
+		Description: "list all running pods across all namespaces with wide output including labels and IP addresses",
+	})
+	if err != nil {
+		t.Fatalf("Failed to create bookmark: %v", err)
+	}
+
+	// List examples
+	output := captureOutput(func() {
+		listExamples()
+	})
+
+	// Verify output contains the tool name
+	if !strings.Contains(output, "kubectl") {
+		t.Error("Output should contain tool name")
+	}
+
+	// Verify multi-line output (check that we have multiple lines)
+	lines := strings.Split(output, "\n")
+	if len(lines) < 5 { // Header + separator + at least 2 content lines + total
+		t.Errorf("Expected multi-line output for wrapped text, got %d lines", len(lines))
+	}
+
+	// Verify the content is present (even if wrapped)
+	if !strings.Contains(output, "running pods") {
+		t.Error("Output should contain description text")
+	}
+	if !strings.Contains(output, "kubectl get pods") {
+		t.Error("Output should contain command text")
+	}
+}
+
+func TestCLIListCommandEdgeCases(t *testing.T) {
+	_, cleanup := setupTestCLI(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	tests := []struct {
+		name        string
+		command     string
+		toolName    string
+		description string
+	}{
+		{
+			name:        "very long single word command",
+			command:     "verylongcommandwithnospacesthatwontbreakproperlyaaaaaaaaaaaaaaaaaaaa",
+			toolName:    "test",
+			description: "test description",
+		},
+		{
+			name:        "unicode characters",
+			command:     "echo 'Hello 世界'",
+			toolName:    "echo",
+			description: "print unicode: 你好",
+		},
+		{
+			name:        "command with pipes and redirects",
+			command:     "cat /var/log/syslog | grep error | awk '{print $1, $2, $5}' | sort | uniq -c",
+			toolName:    "cat",
+			description: "extract and count unique error messages from syslog with timestamps",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := svc.CreateBookmark(ctx, dto.CreateBookmarkRequest{
+				Command:     tt.command,
+				ToolName:    tt.toolName,
+				Description: tt.description,
+			})
+			if err != nil {
+				t.Fatalf("Failed to create bookmark: %v", err)
+			}
+		})
+	}
+
+	// List and verify no crashes
+	output := captureOutput(func() {
+		listExamples()
+	})
+
+	if output == "" {
+		t.Error("Should produce output")
+	}
+
+	// Verify all tools are present
+	if !strings.Contains(output, "test") {
+		t.Error("Output should contain 'test' tool")
+	}
+	if !strings.Contains(output, "echo") {
+		t.Error("Output should contain 'echo' tool")
+	}
+	if !strings.Contains(output, "cat") {
+		t.Error("Output should contain 'cat' tool")
+	}
+}

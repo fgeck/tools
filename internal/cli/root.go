@@ -8,6 +8,7 @@ import (
 
 	"github.com/fgeck/tools/internal/service"
 	"github.com/fgeck/tools/internal/tui"
+	"github.com/fgeck/tools/internal/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -72,13 +73,25 @@ func listExamples() error {
 	_, _ = fmt.Fprintln(w, "TOOL\tDESCRIPTION\tCOMMAND")
 	_, _ = fmt.Fprintln(w, "----\t-----------\t-------")
 
-	// Print rows - one row per example
+	// Define column widths for wrapping
+	const (
+		descriptionWidth = 40
+		commandWidth     = 50
+	)
+
+	// Print rows with wrapping support
 	for _, example := range resp.Examples {
-		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n",
+		rows := utils.SplitWrappedRows(
 			example.ToolName,
 			example.Description,
 			example.Command,
+			descriptionWidth,
+			commandWidth,
 		)
+
+		for _, row := range rows {
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", row[0], row[1], row[2])
+		}
 	}
 
 	_ = w.Flush()

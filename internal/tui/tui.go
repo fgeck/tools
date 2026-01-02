@@ -12,6 +12,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/fgeck/tools/internal/dto"
 	"github.com/fgeck/tools/internal/service"
+	"github.com/fgeck/tools/internal/utils"
 )
 
 var (
@@ -38,13 +39,15 @@ const (
 )
 
 type model struct {
-	table       table.Model
-	tableRows   []tableRow
-	service     service.BookmarkService
-	mode        mode
-	err         error
-	quitting    bool
-	selectedCmd string // Command to output when exiting
+	table            table.Model
+	tableRows        []tableRow
+	rowToBookmarkMap []int  // Maps table row index to bookmark index in tableRows
+	isFirstRow       []bool // Tracks if a display row is the first row of its bookmark
+	service          service.BookmarkService
+	mode             mode
+	err              error
+	quitting         bool
+	selectedCmd      string // Command to output when exiting
 
 	// Add/Edit mode fields
 	toolNameInput textinput.Model
@@ -132,8 +135,50 @@ func NewModel(svc service.BookmarkService) model {
 	return m
 }
 
+// updateColumnWidths dynamically adjusts table column widths based on terminal size
+func (m *model) updateColumnWidths(termWidth int) {
+	const (
+		toolWidth = 15
+		padding   = 10 // Account for borders, spacing
+	)
+
+	availableWidth := termWidth - toolWidth - padding
+	if availableWidth < 50 {
+		availableWidth = 50 // Minimum width
+	}
+
+	descWidth := int(float64(availableWidth) * 0.4)
+	cmdWidth := int(float64(availableWidth) * 0.5)
+
+	m.table.SetColumns([]table.Column{
+		{Title: "Tool", Width: toolWidth},
+		{Title: "Description", Width: descWidth},
+		{Title: "Command", Width: cmdWidth},
+	})
+}
+
 func (m model) Init() tea.Cmd {
 	return tea.Batch(loadBookmarks(m.service), textinput.Blink)
+}
+
+// findNextFirstRow finds the next row index that is a first row, starting from current+1
+func (m *model) findNextFirstRow(current int) int {
+	for i := current + 1; i < len(m.isFirstRow); i++ {
+		if m.isFirstRow[i] {
+			return i
+		}
+	}
+	return current // Stay if no next found
+}
+
+// findPrevFirstRow finds the previous row index that is a first row, starting from current-1
+func (m *model) findPrevFirstRow(current int) int {
+	for i := current - 1; i >= 0; i-- {
+		if m.isFirstRow[i] {
+			return i
+		}
+	}
+	return current // Stay if no previous found
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -142,25 +187,59 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.table.SetHeight(msg.Height - 10)
-		m.table.SetWidth(msg.Width)
+		m.updateColumnWidths(msg.Width)
 		return m, nil
 
 	case bookmarksLoadedMsg:
 		rows := []table.Row{}
 		m.tableRows = []tableRow{}
+		m.rowToBookmarkMap = []int{}
+		m.isFirstRow = []bool{}
+
+		// Get current column widths
+		cols := m.table.Columns()
+		descWidth := 40 // Default
+		cmdWidth := 50  // Default
+		if len(cols) >= 3 {
+			descWidth = cols[1].Width
+			cmdWidth = cols[2].Width
+		}
+
+		bookmarkIndex := 0
 		for _, example := range msg.examples {
-			rows = append(rows, table.Row{
-				example.ToolName,
-				example.Description,
-				example.Command,
-			})
+			// Store the original bookmark
 			m.tableRows = append(m.tableRows, tableRow{
 				toolName:    example.ToolName,
 				description: example.Description,
 				command:     example.Command,
 			})
+
+			// Wrap and split into multiple rows if needed
+			wrappedRows := utils.SplitWrappedRows(
+				example.ToolName,
+				example.Description,
+				example.Command,
+				descWidth,
+				cmdWidth,
+			)
+
+			for rowIdx, row := range wrappedRows {
+				rows = append(rows, table.Row{row[0], row[1], row[2]})
+				m.rowToBookmarkMap = append(m.rowToBookmarkMap, bookmarkIndex)
+				m.isFirstRow = append(m.isFirstRow, rowIdx == 0) // Only first row is true
+			}
+
+			bookmarkIndex++
 		}
 		m.table.SetRows(rows)
+		// Ensure cursor starts on a first row
+		if len(m.isFirstRow) > 0 {
+			cursor := m.table.Cursor()
+			if cursor >= 0 && cursor < len(m.isFirstRow) && !m.isFirstRow[cursor] {
+				// If current cursor is not on a first row, find the nearest first row
+				m.table.SetCursor(m.findNextFirstRow(-1)) // Start from -1 to get first available
+			}
+		}
 		return m, nil
 
 	case errorMsg:
@@ -180,7 +259,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	// Update table
+	// For list mode, don't update the table with anything else to prevent cursor movement
+	// The handleListKeys already handles all necessary table updates
+	if m.mode == modeList {
+		return m, tea.Batch(cmds...)
+	}
+
+	// Update table for other modes
 	var cmd tea.Cmd
 	m.table, cmd = m.table.Update(msg)
 	cmds = append(cmds, cmd)
@@ -200,20 +285,37 @@ func (m model) handleListKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.inputs[0].Focus()
 		return m, textinput.Blink
 
+	case "up", "k", "pgup":
+		// Navigate to previous first row
+		cursor := m.table.Cursor()
+		newCursor := m.findPrevFirstRow(cursor)
+		m.table.SetCursor(newCursor)
+		return m, nil
+
+	case "down", "j", "pgdown":
+		// Navigate to next first row
+		cursor := m.table.Cursor()
+		newCursor := m.findNextFirstRow(cursor)
+		m.table.SetCursor(newCursor)
+		return m, nil
+
 	case "e", "edit":
 		if len(m.tableRows) > 0 {
 			cursor := m.table.Cursor()
-			if cursor >= 0 && cursor < len(m.tableRows) {
-				row := m.tableRows[cursor]
-				m.mode = modeEdit
-				m.originalCmd = row.command
-				// Pre-fill inputs with current values - order: Command, Tool Name, Description
-				m.inputs[0].SetValue(row.command)
-				m.inputs[1].SetValue(row.toolName)
-				m.inputs[2].SetValue(row.description)
-				m.focusIndex = 0
-				m.inputs[0].Focus()
-				return m, textinput.Blink
+			if cursor >= 0 && cursor < len(m.rowToBookmarkMap) {
+				bookmarkIndex := m.rowToBookmarkMap[cursor]
+				if bookmarkIndex >= 0 && bookmarkIndex < len(m.tableRows) {
+					row := m.tableRows[bookmarkIndex]
+					m.mode = modeEdit
+					m.originalCmd = row.command
+					// Pre-fill inputs with current values - order: Command, Tool Name, Description
+					m.inputs[0].SetValue(row.command)
+					m.inputs[1].SetValue(row.toolName)
+					m.inputs[2].SetValue(row.description)
+					m.focusIndex = 0
+					m.inputs[0].Focus()
+					return m, textinput.Blink
+				}
 			}
 		}
 
@@ -226,11 +328,20 @@ func (m model) handleListKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter":
 		// Select the command and exit
 		cursor := m.table.Cursor()
-		if cursor >= 0 && cursor < len(m.tableRows) {
-			m.selectedCmd = m.tableRows[cursor].command
-			m.quitting = true
-			return m, tea.Quit
+		if cursor >= 0 && cursor < len(m.rowToBookmarkMap) {
+			bookmarkIndex := m.rowToBookmarkMap[cursor]
+			if bookmarkIndex >= 0 && bookmarkIndex < len(m.tableRows) {
+				m.selectedCmd = m.tableRows[bookmarkIndex].command
+				m.quitting = true
+				return m, tea.Quit
+			}
 		}
+	}
+
+	// Don't pass navigation keys to table to prevent default navigation
+	switch msg.String() {
+	case "up", "down", "k", "j", "pgup", "pgdown":
+		return m, nil
 	}
 
 	var cmd tea.Cmd
@@ -427,11 +538,16 @@ func (m model) submitEdit() (tea.Model, tea.Cmd) {
 
 func (m model) submitDelete() (tea.Model, tea.Cmd) {
 	cursor := m.table.Cursor()
-	if cursor < 0 || cursor >= len(m.tableRows) {
+	if cursor < 0 || cursor >= len(m.rowToBookmarkMap) {
 		return m, nil
 	}
 
-	row := m.tableRows[cursor]
+	bookmarkIndex := m.rowToBookmarkMap[cursor]
+	if bookmarkIndex < 0 || bookmarkIndex >= len(m.tableRows) {
+		return m, nil
+	}
+
+	row := m.tableRows[bookmarkIndex]
 	ctx := context.Background()
 	// Delete the specific example by its command (primary key)
 	err := m.service.DeleteBookmark(ctx, row.command)
@@ -551,11 +667,16 @@ func (m model) editView() string {
 
 func (m model) deleteView() string {
 	cursor := m.table.Cursor()
-	if cursor < 0 || cursor >= len(m.tableRows) {
+	if cursor < 0 || cursor >= len(m.rowToBookmarkMap) {
 		return ""
 	}
 
-	row := m.tableRows[cursor]
+	bookmarkIndex := m.rowToBookmarkMap[cursor]
+	if bookmarkIndex < 0 || bookmarkIndex >= len(m.tableRows) {
+		return ""
+	}
+
+	row := m.tableRows[bookmarkIndex]
 	var b strings.Builder
 	b.WriteString(titleStyle.Render("Confirm Delete"))
 	b.WriteString("\n\n")
