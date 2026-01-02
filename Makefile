@@ -1,4 +1,4 @@
-.PHONY: help fmt lint build test unit-test integration-test clean install coverage pre-commit install-hooks
+.PHONY: help fmt lint build test unit-test integration-test clean install coverage pre-commit install-hooks release-patch release-minor release-major delete-release list-releases
 
 # Default target
 .DEFAULT_GOAL := help
@@ -103,3 +103,124 @@ demo: build ## Generate demo GIF using VHS
 	@echo "✅ Demo generated: demos/demo.gif"
 
 all: clean deps pre-commit test build ## Run all checks and build
+
+# Release management
+# Semantic versioning for releases (vMAJOR.MINOR.PATCH)
+# - PATCH: Backwards-compatible bug fixes (v1.2.3 -> v1.2.4)
+# - MINOR: Backwards-compatible new features (v1.2.3 -> v1.3.0)
+# - MAJOR: Breaking changes (v1.2.3 -> v2.0.0)
+#
+# Usage:
+#   make release-patch  - Create a patch release
+#   make release-minor  - Create a minor release
+#   make release-major  - Create a major release
+#   make list-releases  - List all existing releases
+#   make delete-release TAG=v1.2.3 - Delete a specific release
+#
+# Get the current version from git tags, default to v0.0.0 if no tags exist
+CURRENT_VERSION=$(shell git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+
+# Function to increment semantic version
+# Usage: $(call increment_version,major|minor|patch)
+define get_next_version
+$(shell echo $(CURRENT_VERSION) | sed 's/^v//' | awk -F. -v type=$(1) '\
+	BEGIN { OFS="." } \
+	{ \
+		if (type == "major") { print $$1+1, 0, 0 } \
+		else if (type == "minor") { print $$1, $$2+1, 0 } \
+		else if (type == "patch") { print $$1, $$2, $$3+1 } \
+	}')
+endef
+
+list-releases: ## List all releases/tags
+	@echo "Current releases:"
+	@git tag -l --sort=-v:refname | head -20
+
+release-patch: ## Create a new patch release (e.g., v1.2.3 -> v1.2.4)
+	@echo "Current version: $(CURRENT_VERSION)"
+	$(eval NEW_VERSION := v$(call get_next_version,patch))
+	@echo "Creating new patch release: $(NEW_VERSION)"
+	@read -p "Create tag $(NEW_VERSION)? [y/N] " -n 1 -r; \
+	echo; \
+	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
+		git tag -a $(NEW_VERSION) -m "Release $(NEW_VERSION)"; \
+		echo "✅ Tag $(NEW_VERSION) created locally"; \
+		read -p "Push tag to remote? [y/N] " -n 1 -r; \
+		echo; \
+		if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
+			git push origin $(NEW_VERSION); \
+			echo "✅ Tag pushed to remote"; \
+			echo "View at: https://github.com/$$(git config --get remote.origin.url | sed 's/.*github.com[:/]\(.*\)\.git/\1/')/releases/tag/$(NEW_VERSION)"; \
+		else \
+			echo "⚠️  Tag created locally but not pushed. Use 'git push origin $(NEW_VERSION)' to push later."; \
+		fi; \
+	else \
+		echo "❌ Release cancelled"; \
+	fi
+
+release-minor: ## Create a new minor release (e.g., v1.2.3 -> v1.3.0)
+	@echo "Current version: $(CURRENT_VERSION)"
+	$(eval NEW_VERSION := v$(call get_next_version,minor))
+	@echo "Creating new minor release: $(NEW_VERSION)"
+	@read -p "Create tag $(NEW_VERSION)? [y/N] " -n 1 -r; \
+	echo; \
+	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
+		git tag -a $(NEW_VERSION) -m "Release $(NEW_VERSION)"; \
+		echo "✅ Tag $(NEW_VERSION) created locally"; \
+		read -p "Push tag to remote? [y/N] " -n 1 -r; \
+		echo; \
+		if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
+			git push origin $(NEW_VERSION); \
+			echo "✅ Tag pushed to remote"; \
+			echo "View at: https://github.com/$$(git config --get remote.origin.url | sed 's/.*github.com[:/]\(.*\)\.git/\1/')/releases/tag/$(NEW_VERSION)"; \
+		else \
+			echo "⚠️  Tag created locally but not pushed. Use 'git push origin $(NEW_VERSION)' to push later."; \
+		fi; \
+	else \
+		echo "❌ Release cancelled"; \
+	fi
+
+release-major: ## Create a new major release (e.g., v1.2.3 -> v2.0.0)
+	@echo "Current version: $(CURRENT_VERSION)"
+	$(eval NEW_VERSION := v$(call get_next_version,major))
+	@echo "Creating new major release: $(NEW_VERSION)"
+	@echo "⚠️  WARNING: Major version change indicates breaking changes!"
+	@read -p "Create tag $(NEW_VERSION)? [y/N] " -n 1 -r; \
+	echo; \
+	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
+		git tag -a $(NEW_VERSION) -m "Release $(NEW_VERSION)"; \
+		echo "✅ Tag $(NEW_VERSION) created locally"; \
+		read -p "Push tag to remote? [y/N] " -n 1 -r; \
+		echo; \
+		if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
+			git push origin $(NEW_VERSION); \
+			echo "✅ Tag pushed to remote"; \
+			echo "View at: https://github.com/$$(git config --get remote.origin.url | sed 's/.*github.com[:/]\(.*\)\.git/\1/')/releases/tag/$(NEW_VERSION)"; \
+		else \
+			echo "⚠️  Tag created locally but not pushed. Use 'git push origin $(NEW_VERSION)' to push later."; \
+		fi; \
+	else \
+		echo "❌ Release cancelled"; \
+	fi
+
+delete-release: ## Delete a release/tag (usage: make delete-release TAG=v1.2.3)
+	@if [ -z "$(TAG)" ]; then \
+		echo "❌ Error: TAG parameter is required"; \
+		echo "Usage: make delete-release TAG=v1.2.3"; \
+		exit 1; \
+	fi
+	@echo "⚠️  WARNING: This will delete tag $(TAG)!"
+	@read -p "Delete tag $(TAG) locally? [y/N] " -n 1 -r; \
+	echo; \
+	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
+		git tag -d $(TAG) 2>/dev/null && echo "✅ Tag deleted locally" || echo "⚠️  Tag not found locally"; \
+		read -p "Delete tag from remote? [y/N] " -n 1 -r; \
+		echo; \
+		if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
+			git push origin :refs/tags/$(TAG) 2>/dev/null && echo "✅ Tag deleted from remote" || echo "⚠️  Tag not found on remote"; \
+		else \
+			echo "⚠️  Tag deleted locally but not from remote. Use 'git push origin :refs/tags/$(TAG)' to delete from remote later."; \
+		fi; \
+	else \
+		echo "❌ Deletion cancelled"; \
+	fi
