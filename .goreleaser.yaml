@@ -78,7 +78,7 @@ homebrew_casks:
   - name: tools
     repository:
       owner: fgeck
-      name: homebrew-tools
+      name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
 
     directory: Casks

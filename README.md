@@ -27,11 +27,10 @@ make build
 sudo mv tools /usr/local/bin/
 ```
 
-### Via Homebrew (Coming Soon)
+### Via Homebrew
 
 ```bash
-brew tap fgeck/tools
-brew install tools
+brew install --cask fgeck/tap/tools
 ```
 
 ### Docker
